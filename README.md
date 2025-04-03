@@ -1,7 +1,7 @@
 # smart-city
 
 ## Description
-Plateforme de suivi environnemental et de prédiction pour une ville intelligente.
+Plateforme de suivi environnemental et de prédiction pour des villes intelligentes.
 
 ## Fonctionnalités
 - Collecte et ingestion de données environnementales
