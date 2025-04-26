@@ -9,7 +9,7 @@ openmeteo_mapping_attributes = {
     "precipitation": "precipitation",
     "snowfall": "snow",
     "snow_depth": "snow depth",
-    "wind_gust_10m": "wind_gust",
+    "wind_gusts_10m": "wind_gust",
     "wind_speed_10m": "wind_speed",
     "wind_direction_10m": "wind_direction",
     "surface_pressure": "pressure",
@@ -41,3 +41,5 @@ def convert_to_df(openmeteo_data):
     df = pd.DataFrame(openmeteo_data["hourly"])
     df['time'] = pd.to_datetime(df['time'])
     return df
+
+print(openmeteo_mapping_attributes)
