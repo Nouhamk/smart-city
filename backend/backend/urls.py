@@ -16,7 +16,9 @@ Including another URLconf
 """
 from django.urls import path
 from .default_view import default_view
+from .metricsview import get_data
 
 urlpatterns = [
     path('', default_view, name='home'),
+    path('api/get-data/', get_data, name='get_data'),
 ]
