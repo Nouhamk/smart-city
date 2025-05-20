@@ -1,6 +1,6 @@
 import requests
 
-from backend.mapping.openmeteo_mapping import map_to_common_data, convert_to_df
+from backend.app.mapping.openmeteo_mapping import convert_to_df
 
 latitude = 40.7128  # Example: Latitude for New York City
 longitude = -74.0060  # Example: Longitude for New York City

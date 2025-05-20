@@ -2,7 +2,9 @@ import csv
 import io
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .supabase_client import supabase
+
+from app.cron import import_openmeteo_data
+from app.supabase_client import supabase
 
 def get_data(request):
     table_name = request.GET.get('table', 'normalized_data')
@@ -58,3 +60,17 @@ def upload_csv_to_table(request):
         #print(f"Error processing CSV upload: {str(e)}") #for debugging
         #print(traceback.format_exc()) #for debugging
         return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt #might have to change this for role-based access control
+def trigger_import(request):
+    if request.method == 'POST':
+        try:
+            result = import_openmeteo_data()
+            if result:
+                return JsonResponse({'status': 'success', 'message': 'Weather data import completed successfully'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Weather data import failed'}, status=500)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Only POST method allowed'}, status=405)
