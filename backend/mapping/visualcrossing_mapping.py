@@ -1,24 +1,23 @@
 import pandas as pd
 
-
-visualcrossing_mapping_attributes = {
+visualcrossing_to_common_mapping = {
     "temp": "temperature",
     "feelslike": "apparent_temperature",
     "humidity": "humidity",
-    "dew": "dewpoint",
-    "Precipitation Probability": "precipprob",
-    "Precipitation (rain + showers + snow)": "precip",
+    "dew": "dew_point",
+    "Precipitation Probability": "precipitation_probability",
+    "Precipitation (rain + showers + snow)": "precipitation",
     "snow": "snow",
-    "snowdepth": "snow depth",
+    "snowdepth": "snow_depth",
     "windgust": "wind_gust",
     "windspeed": "wind_speed",
     "winddir": "wind_direction",
     "pressure": "pressure",
     "visibility": "visibility",
-    "cloudcover": "cloudcover"
+    "cloud_cover": "cloud_cover"
 }
 
-common_to_visualcrossing_mapping = {v: k for k, v in visualcrossing_mapping_attributes.items()}
+common_to_visualcrossing_mapping = {v: k for k, v in visualcrossing_to_common_mapping.items()}
 
 def map_to_common_data(visualcrossing_data):
     common_data = {}
@@ -29,7 +28,7 @@ def map_to_common_data(visualcrossing_data):
         {
             "time": visualcrossing_data["days"][index]["datetime"],
             "data": {
-                visualcrossing_mapping_attributes[key]: 
+                visualcrossing_to_common_mapping[key]:
                     value[index] for key, value in filter(lambda x: x[0] != "datetime", visualcrossing_data["days"][index].items())
             }
         }
