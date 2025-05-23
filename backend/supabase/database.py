@@ -15,7 +15,6 @@ def save_normalized_data(data):
 
 
 def load_normalized_data(region_name, metrics, start_time, end_time):
-
     response = (
         supabase
         .table("normalized_data")

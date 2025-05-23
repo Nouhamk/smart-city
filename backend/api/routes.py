@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from datetime import datetime
 import re
 
+from backend.supabase.database import load_normalized_data
+
 app = Flask(__name__)
 
 all_measures = [
