@@ -17,8 +17,8 @@
             <li class="nav-item">
               <router-link class="nav-link" to="/map">Carte</router-link>
             </li>
-            <li class="nav-item">
-              <router-link class="nav-link" to="/history">Historique</router-link>
+            <li class="nav-item" v-if="isAdmin">
+              <router-link class="nav-link" to="/history">Paramètres & Historique</router-link>
             </li>
           </ul>
           <div class="d-flex">
@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 export default defineComponent({
@@ -68,6 +68,8 @@ export default defineComponent({
     const isLoggedIn = ref(false)
     const username = ref('Utilisateur')
     const router = useRouter()
+    
+    const isAdmin = computed(() => localStorage.getItem('isAdmin') === 'true')
     
     const logout = () => {
       // Fonction de déconnexion à implémenter
@@ -80,7 +82,8 @@ export default defineComponent({
     return {
       isLoggedIn,
       username,
-      logout
+      logout,
+      isAdmin
     }
   }
 })
