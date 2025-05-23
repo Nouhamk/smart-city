@@ -33,7 +33,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { authService } from '../services/api.service'
+import { useAuthStore } from '../store/auth'
 
 export default defineComponent({
   name: 'LoginView',
@@ -41,32 +41,47 @@ export default defineComponent({
     const username = ref('')
     const password = ref('')
     const router = useRouter()
+    const authStore = useAuthStore()
+    const error = ref('')
     
     const login = async () => {
       try {
-        //const response = await authService.login({
-          //username: username.value,
-          //password: password.value
-        //})
+        // For demo purposes, simulating different user roles
+        if (username.value === 'admin' && password.value === 'admin') {
+          // Simulate admin login
+          localStorage.setItem('token', 'fake-jwt-token')
+          localStorage.setItem('refresh_token', 'fake-refresh-token')
+          localStorage.setItem('roles', JSON.stringify(['ADMIN']))
+          localStorage.setItem('isAdmin', 'true')
+          router.push('/dashboard')
+        } else if (username.value && password.value) {
+          // Simulate regular user login
+          localStorage.setItem('token', 'fake-jwt-token')
+          localStorage.setItem('refresh_token', 'fake-refresh-token')
+          localStorage.setItem('roles', JSON.stringify(['USER']))
+          localStorage.setItem('isAdmin', 'false')
+          router.push('/dashboard')
+        }
         
-        // Stocker le token JWT
-        //localStorage.setItem('token', response.data.access)
-        //localStorage.setItem('refresh_token', response.data.refresh)
-        
-        localStorage.setItem('token', 'fake-jwt-token');
-        localStorage.setItem('refresh_token', 'fake-refresh-token');
-        // Rediriger vers le tableau de bord
-        router.push('/dashboard')
-      } catch (error) {
-        console.error('Erreur de connexion', error)
-        alert('Identifiants invalides')
+        /* In production, use this instead:
+        const success = await authStore.login(username.value, password.value)
+        if (success) {
+          router.push('/dashboard')
+        } else {
+          error.value = 'Identifiants invalides'
+        }
+        */
+      } catch (err) {
+        console.error('Erreur de connexion', err)
+        error.value = 'Identifiants invalides'
       }
     }
     
     return {
       username,
       password,
-      login
+      login,
+      error
     }
   }
 })
