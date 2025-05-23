@@ -1,6 +1,6 @@
 import pandas as pd
 
-openmeteo_mapping_attributes = {
+openmeteo_to_common_mapping = {
     "temperature_2m": "temperature",
     "apparent_temperature": "apparent_temperature",
     "relative_humidity_2m": "humidity",
@@ -16,6 +16,9 @@ openmeteo_mapping_attributes = {
     "visibility": "visibility",
     "cloud_cover": "cloudcover"
 }
+
+common_to_openmeteo_mapping = {v: k for k, v in openmeteo_to_common_mapping.items()}
+
 
 
 def map_to_common_data(openmeteo_data):

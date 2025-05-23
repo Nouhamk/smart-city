@@ -18,6 +18,8 @@ visualcrossing_mapping_attributes = {
     "cloudcover": "cloudcover"
 }
 
+common_to_visualcrossing_mapping = {v: k for k, v in visualcrossing_mapping_attributes.items()}
+
 def map_to_common_data(visualcrossing_data):
     common_data = {}
     common_data["latitude"] = visualcrossing_data["latitude"]
