@@ -39,18 +39,7 @@ def load_normalized_data(region_name, metrics, start_time, end_time):
     return response.data
 
 
-def get_latest_timestamp():
-    response = (
-        supabase
-        .table("normalized_data")
-        .select("time")
-        .order("time", desc=True)
-        .limit(1)
-        .execute()
-    )
-
-    if response.data:
-        return response.data[0]["time"]
-    else:
-        return None
+def get_latest_timestamp_by_cities():
+    response = supabase.rpc("get_latest_time_by_region_id").execute()
+    return response.data
 
