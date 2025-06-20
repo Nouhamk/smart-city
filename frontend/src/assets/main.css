@@ -1,0 +1,55 @@
+/* Style principal de l'application */
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.jumbotron {
+  background-color: #f8f9fa;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border-radius: 0.3rem;
+}
+
+.chart-container {
+  position: relative;
+  margin: auto;
+  height: 100%;
+  width: 100%;
+}
+
+/* Styles pour les badges d'alerte */
+.badge-success {
+  background-color: #28a745;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+}
+
+.badge-danger {
+  background-color: #dc3545;
+}
+
+/* Personnalisation des cartes */
+.card {
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+/* Style pour la barre de navigation */
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Style pour le footer */
+footer {
+  margin-top: 2rem;
+}
