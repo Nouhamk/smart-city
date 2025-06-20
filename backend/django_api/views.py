@@ -1,12 +1,13 @@
-from rest_framework import generics
+from rest_framework import generics, viewsets, permissions
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Alert
-from .serializers import AlertSerializer
+from .models import Alert, AlertThreshold, Prediction, CustomUser
+from .serializers import AlertSerializer, AlertThresholdSerializer, PredictionSerializer, UserSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
+from rest_framework.decorators import action
 
 User = get_user_model()
 
@@ -62,4 +63,41 @@ class AlertResolveView(APIView):
             alert.save()
             return Response(AlertSerializer(alert).data)
         except Alert.DoesNotExist:
-            return Response({'error': 'Alert not found'}, status=status.HTTP_404_NOT_FOUND) 
+            return Response({'error': 'Alert not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class UserUpdateView(generics.RetrieveUpdateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+class UserDeleteView(generics.DestroyAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+class AlertThresholdViewSet(viewsets.ModelViewSet):
+    queryset = AlertThreshold.objects.all()
+    serializer_class = AlertThresholdSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+class PredictionViewSet(viewsets.ModelViewSet):
+    queryset = Prediction.objects.all()
+    serializer_class = PredictionSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def analyze(self, request):
+        for pred in self.get_queryset():
+            try:
+                threshold = AlertThreshold.objects.get(type=pred.type, zone=pred.zone).value
+            except AlertThreshold.DoesNotExist:
+                continue
+            if pred.value > threshold:
+                Alert.objects.create(
+                    type=pred.type,
+                    message=f"Prédiction : {pred.value} dépasse le seuil {threshold}",
+                    level='warning',
+                    status='active',
+                    data={'prediction_id': pred.id, 'value': pred.value, 'threshold': threshold}
+                )
+        return Response({'status': 'Analyse terminée'}) 

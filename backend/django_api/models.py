@@ -34,3 +34,21 @@ class Alert(models.Model):
     
     def __str__(self):
         return f"{self.type} - {self.status} - {self.created_at}" 
+
+class AlertThreshold(models.Model):
+    type = models.CharField(max_length=20)  # ex: 'rain', 'heatwave', 'pollution', etc.
+    value = models.FloatField()
+    zone = models.CharField(max_length=50, blank=True, null=True)  # optionnel, pour la gestion par zone
+
+    def __str__(self):
+        return f"{self.type} - {self.value} - {self.zone or 'global'}"
+
+class Prediction(models.Model):
+    type = models.CharField(max_length=20)  # ex: 'pollution', 'rain', etc.
+    value = models.FloatField()
+    date = models.DateTimeField()
+    zone = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.type} - {self.value} - {self.date} - {self.zone or 'global'}" 

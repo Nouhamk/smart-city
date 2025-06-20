@@ -21,7 +21,13 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenBlacklistView,
 )
-from django_api.views import RegisterView, AlertListView, AlertHistoryView, AlertAcknowledgeView, AlertResolveView
+from django_api.views import RegisterView, AlertListView, AlertHistoryView, AlertAcknowledgeView, AlertResolveView, UserUpdateView, UserDeleteView
+from django_api.views import AlertThresholdViewSet, PredictionViewSet
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'alert-thresholds', AlertThresholdViewSet, basename='alert-threshold')
+router.register(r'predictions', PredictionViewSet, basename='prediction')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -33,4 +39,7 @@ urlpatterns = [
     path('api/alerts/history/', AlertHistoryView.as_view(), name='alerts-history'),
     path('api/alerts/<int:pk>/acknowledge/', AlertAcknowledgeView.as_view(), name='alerts-acknowledge'),
     path('api/alerts/<int:pk>/resolve/', AlertResolveView.as_view(), name='alerts-resolve'),
+    path('api/users/<int:pk>/update/', UserUpdateView.as_view(), name='user-update'),
+    path('api/users/<int:pk>/delete/', UserDeleteView.as_view(), name='user-delete'),
 ]
+urlpatterns += router.urls
