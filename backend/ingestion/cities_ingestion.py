@@ -11,7 +11,7 @@ cities = [
     {"name": "Moscow", "latitude": 55.7558, "longitude": 37.6173},
     {"name": "Cairo", "latitude": 30.0444, "longitude": 31.2357},
     {"name": "Sydney", "latitude": -33.8688, "longitude": 151.2093},
-    {"name": "São Paulo", "latitude": -23.5505, "longitude": -46.6333},
+    {"name": "Sao Paulo", "latitude": -23.5505, "longitude": -46.6333},
     {"name": "Mexico City", "latitude": 19.4326, "longitude": -99.1332},
     {"name": "Mumbai", "latitude": 19.0760, "longitude": 72.8777},
     {"name": "Toronto", "latitude": 43.6511, "longitude": -79.3832},
@@ -19,7 +19,7 @@ cities = [
 ]
 
 def get_all_regions(): # On peut améliorer redondance
-    return list(filter(lambda x: x["name"], cities))
+    return list(map(lambda x: x["name"].lower(), cities))
 
 def get_coorindates(city_name):
     city = filter(lambda x: x["name"] == city_name, cities)[0]

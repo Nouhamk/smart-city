@@ -25,14 +25,16 @@ def save_normalized_data(data):
         .execute()
 
 
-def load_normalized_data(region_name, metrics, start_time, end_time):
+def load_normalized_data(start_time, end_time, regions, metrics):
+    regions_lowered = list(map(lambda region: region.lower(), regions))
+
     response = (
         supabase
         .table("normalized_data")
-        .select(",".join(metrics + ["region(name)"]))  # Pas de join en supabase on réference direct la table
+        .select(",".join(["time", "region_id", "region(name)"] + metrics))  # Pas de join en supabase on réference direct la table
         .gte("time", start_time)
         .lte("time", end_time)
-        .ilike("region.name", region_name.lower())
+        .in_("region.name", regions_lowered)
         .execute()
     )
 
