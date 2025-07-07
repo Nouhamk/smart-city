@@ -1,10 +1,9 @@
-from datetime import datetime, date
+from datetime import date
 
-from backend.ingestion.cities_ingestion import save_cities_to_supabase, get_all_regions
-from backend.mapping.metrics import get_all_metrics
-from backend.openmeteo import get_openmeteo_data
+from backend.data_api.ingestion.cities_ingestion import save_cities_to_supabase
+from backend.data_api.mapping.metrics import get_all_metrics
+from backend.data_api.openmeteo import get_openmeteo_data
 from backend.supabase.database import save_normalized_data, load_regions
-from backend.visualcrossing import get_visualcrossing_data
 
 START_DATE_INGESTION = '2025-03-01'
 END_DATE_INGESTION = '2025-05-23'

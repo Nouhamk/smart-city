@@ -1,8 +1,4 @@
 import requests
-import json
-
-from backend.ingestion.cities_ingestion import get_coorindates
-from backend.mapping.visualcrossing_mapping import map_to_common_data
 
 api_key = "85b2d49aeced8fb9fe7d3e6a8aa8c2c6"
 

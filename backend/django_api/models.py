@@ -7,7 +7,10 @@ class CustomUser(AbstractUser):
         ('user', 'User'),
         ('admin', 'Admin'),
     ]
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user') 
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
+
+    class Meta:
+        managed = False  # Don't let Django manage this table
 
 class Alert(models.Model):
     ALERT_TYPE_CHOICES = [
@@ -31,14 +34,20 @@ class Alert(models.Model):
     acknowledged_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     data = models.JSONField(null=True, blank=True)
-    
+
+    class Meta:
+        managed = False
+
     def __str__(self):
-        return f"{self.type} - {self.status} - {self.created_at}" 
+        return f"{self.type} - {self.status} - {self.created_at}"
 
 class AlertThreshold(models.Model):
     type = models.CharField(max_length=20)  # ex: 'rain', 'heatwave', 'pollution', etc.
     value = models.FloatField()
     zone = models.CharField(max_length=50, blank=True, null=True)  # optionnel, pour la gestion par zone
+
+    class Meta:
+        managed = False
 
     def __str__(self):
         return f"{self.type} - {self.value} - {self.zone or 'global'}"
@@ -50,5 +59,8 @@ class Prediction(models.Model):
     zone = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        managed = False
+
     def __str__(self):
-        return f"{self.type} - {self.value} - {self.date} - {self.zone or 'global'}" 
+        return f"{self.type} - {self.value} - {self.date} - {self.zone or 'global'}"

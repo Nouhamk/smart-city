@@ -1,15 +1,13 @@
 import random
 from math import ceil
 
-import pandas
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 
-from backend.api.routes import get_data_common
-from backend.lstm.model import LSTMModel
+from backend.data_api.lstm.model import LSTMModel
 
 NUMBER_EPOCHS = 20
 BASE_MODEL_PATH = 'C:/Users/Tristan/Desktop/TAF/smart-city/backend/models'

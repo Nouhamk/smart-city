@@ -2,9 +2,9 @@ from datetime import datetime
 
 from flatbuffers.number_types import np
 
-from backend.api.routes import get_data_common
-from backend.lstm.train import train_ai
-from backend.mapping.metrics import get_all_metrics
+from backend.data_api.routes import get_data_common
+from backend.data_api.lstm.train import train_ai
+from backend.data_api.mapping.metrics import get_all_metrics
 
 PACKET_SIZE = 12
 

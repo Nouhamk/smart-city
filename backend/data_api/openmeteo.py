@@ -1,8 +1,6 @@
-from time import strftime
 import requests
 
-from backend.ingestion.cities_ingestion import get_coorindates
-from backend.mapping.openmeteo_mapping import convert_common_metrics_to_api_string, get_common_to_openmeteo_mapping, convert_to_harmonized_df
+from backend.data_api.mapping.openmeteo_mapping import convert_common_metrics_to_api_string, convert_to_harmonized_df
 
 
 def get_openmeteo_data(region, metrics, start_date, end_date):

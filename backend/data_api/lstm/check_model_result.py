@@ -2,10 +2,8 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from backend.api.routes import get_data_common
-from backend.lstm.train import train_ai
-from backend.lstm.train_all_models import preprocess_train_data
-from backend.mapping.metrics import get_all_metrics
+from backend.data_api.routes import get_data_common
+from backend.data_api.lstm.train_all_models import preprocess_train_data
 
 metric = "humidity"
 NBR_ROW_TRAIN = 1000
