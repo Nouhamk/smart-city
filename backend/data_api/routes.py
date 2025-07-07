@@ -6,113 +6,96 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from backend.data_api.ingestion.cities_ingestion import get_all_regions
-from backend.data_api.mapping.metrics import get_all_metrics
-from backend.supabase.database import load_normalized_data
-from apscheduler.schedulers.blocking import BlockingScheduler
-from backend.data_api.ingestion.update_ingestion import update_ingestion
+from data_api.ingestion.cities_ingestion import get_all_regions
+from data_api.mapping.metrics import get_all_metrics
+
+from data_api.database import load_normalized_data
 
 
 class DataView(APIView):
     """
     API view to retrieve normalized data based on regions, date range, and metrics.
     """
-    permission_classes = [IsAuthenticated]  # Add appropriate permissions
+    permission_classes = [IsAuthenticated]
 
-    def get_data_common(self, regions=None, start=None, end=None, metrics=None):
-        """Helper method to process common data retrieval logic"""
-        # Default start date
-        start = (
-            "2025-03-01"
-            if start is None
-            else start
-        )
+    def get(self, request):
+        # Extract parameters from query params
+        regions_param = request.query_params.getlist('regions')
+        start_param = request.query_params.get('start')
+        end_param = request.query_params.get('end')
+        metrics_param = request.query_params.getlist('metrics')
 
-        # Default end date
-        end = (
-            str(date.today())
-            if end is None
-            else end
-        )
-
-        all_metrics = get_all_metrics()
-        all_regions = get_all_regions()
-
-        metrics = (
-            all_metrics
-            if metrics is None
-            else metrics
-        )
-
-        regions = (
-            all_regions
-            if regions is None
-            else regions
-        )
-
-        # Validate metrics
-        invalid_metrics = set(metrics) - set(all_metrics)
-        if invalid_metrics:
-            return None, f"Unknown metric(s): {', '.join(invalid_metrics)}"
-
-        # Validate date format
-        pattern = r"^\d{4}-\d{2}-\d{2}$"
-        if not re.match(pattern, str(start)):
-            return None, "Start date format invalid"
-        if not re.match(pattern, str(end)):
-            return None, "End date format invalid"
-        if start > end:
-            return None, "Start date can't be superior to end date."
-
-        data = load_normalized_data(start, end, regions, metrics)
-        return data, None
-
-    def post(self, request):
-        """Handle POST requests for data retrieval"""
-        data = request.data
-
-        # Extract parameters from request data
-        regions = data.get('regions')
-        start = data.get('start')
-        end = data.get('end')
-        metrics = data.get('metrics')
-
-        # Parse dates if provided
-        if start:
+        # Set defaults
+        if not start_param:
+            start = "2025-03-01"
+        else:
             try:
-                start = datetime.strptime(start, "%Y-%m-%d").date()
+                start = datetime.strptime(start_param, "%Y-%m-%d").date()
             except ValueError:
                 return Response(
                     {'error': 'Invalid start date format. Use YYYY-MM-DD'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        if end:
+        if not end_param:
+            end = str(date.today())
+        else:
             try:
-                end = datetime.strptime(end, "%Y-%m-%d").date()
+                end = datetime.strptime(end_param, "%Y-%m-%d").date()
             except ValueError:
                 return Response(
                     {'error': 'Invalid end date format. Use YYYY-MM-DD'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Get data using common method
-        result, error_msg = self.get_data_common(
-            regions=regions,
-            start=start,
-            end=end,
-            metrics=metrics
-        )
+        # Get all available options
+        all_metrics = get_all_metrics()
+        all_regions = get_all_regions()
 
-        if error_msg:
+        # Set defaults if not provided
+        metrics = metrics_param if metrics_param else all_metrics
+        regions = regions_param if regions_param else all_regions
+
+        # Validate metrics
+        invalid_metrics = set(metrics) - set(all_metrics)
+        if invalid_metrics:
             return Response(
-                {'error': error_msg},
+                {'error': f"Unknown metric(s): {', '.join(invalid_metrics)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        return Response(result, status=status.HTTP_200_OK)
+        # Validate regions
+        invalid_regions = set(regions) - set(all_regions)
+        if invalid_regions:
+            return Response(
+                {'error': f"Unknown region(s): {', '.join(invalid_regions)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-#job to update ingestion every hour
-scheduler = BlockingScheduler()
-scheduler.add_job(update_ingestion, 'interval', hours=1)
-scheduler.start()
+        # Validate date format and logic
+        pattern = r"^\d{4}-\d{2}-\d{2}$"
+        if not re.match(pattern, str(start)):
+            return Response(
+                {'error': 'Start date format invalid'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not re.match(pattern, str(end)):
+            return Response(
+                {'error': 'End date format invalid'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if start > end:
+            return Response(
+                {'error': "Start date can't be superior to end date."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            data = load_normalized_data(start, end, regions, metrics)
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to load data: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

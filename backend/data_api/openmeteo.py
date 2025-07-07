@@ -1,6 +1,6 @@
 import requests
 
-from backend.data_api.mapping.openmeteo_mapping import convert_common_metrics_to_api_string, convert_to_harmonized_df
+from data_api.mapping.openmeteo_mapping import convert_common_metrics_to_api_string, convert_to_harmonized_df
 
 
 def get_openmeteo_data(region, metrics, start_date, end_date):

@@ -1,8 +1,8 @@
 from datetime import date
 
-from backend.data_api.mapping.metrics import get_all_metrics
-from backend.data_api.openmeteo import get_openmeteo_data
-from backend.supabase.database import save_normalized_data, load_regions, get_latest_timestamp_by_cities
+from data_api.mapping.metrics import get_all_metrics
+from data_api.openmeteo import get_openmeteo_data
+from ..database import save_normalized_data, load_regions, get_latest_timestamp_by_cities
 
 
 def update_ingestion(end_date = date.today()):

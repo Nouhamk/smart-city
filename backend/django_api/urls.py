@@ -50,5 +50,6 @@ urlpatterns = [
     path('api/predictions/<int:pk>/', PredictionDetailView.as_view(), name='predictions-detail'),
     path('api/predictions/analyze/', PredictionAnalyzeView.as_view(), name='predictions-analyze'),
 
-    #path('', include('data_api.urls'))
+    # Date URLs
+    path('', include('data_api.urls'))
 ]

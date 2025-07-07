@@ -1,6 +1,6 @@
 import pandas as pd
 
-from backend.data_api.mapping.common import list_to_string_api
+from data_api.mapping.common import list_to_string_api
 
 openmeteo_to_common_mapping = {
     "temperature_2m": "temperature",

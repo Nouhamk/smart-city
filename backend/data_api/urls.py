@@ -1,6 +1,6 @@
 from django.urls import path
 
-from backend.data_api.routes import DataView
+from data_api.routes import DataView
 
 app_name = 'data_api'
 
