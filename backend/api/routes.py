@@ -5,6 +5,8 @@ import re
 from backend.ingestion.cities_ingestion import get_all_regions
 from backend.mapping.metrics import get_all_metrics
 from backend.supabase.database import load_normalized_data
+from apscheduler.schedulers.blocking import BlockingScheduler
+from backend.ingestion.update_ingestion import update_ingestion
 
 app = Flask(__name__)
 
@@ -71,3 +73,7 @@ def get_data():
         end=request.get_json().get('end'),
         metrics=request.get_json().get('metrics')
     )
+
+scheduler = BlockingScheduler()
+scheduler.add_job(update_ingestion, 'interval', hours=1)
+scheduler.start()
