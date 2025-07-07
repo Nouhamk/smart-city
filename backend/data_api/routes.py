@@ -1,6 +1,7 @@
 from datetime import datetime, date
 import re
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -10,6 +11,10 @@ from data_api.ingestion.cities_ingestion import get_all_regions
 from data_api.mapping.metrics import get_all_metrics
 
 from data_api.database import load_normalized_data
+
+from data_api.ingestion import update_ingestion
+
+import atexit
 
 
 class DataView(APIView):
@@ -99,3 +104,28 @@ class DataView(APIView):
                 {'error': f'Failed to load data: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+
+
+#def test_job():
+#    current_time = datetime.now().strftime("%H:%M:%S")
+#    print(f"Background test job running at: {current_time}")
+
+def ingestion_job():
+    current_time = datetime.now().strftime("%H:%M:%S")
+    print(f"🔄 Ingestion job running at: {current_time}")
+    update_ingestion()
+
+scheduler = BackgroundScheduler()
+print("Background scheduler started")
+
+# FOR TESTING: Test job every 1 seconds
+#scheduler.add_job(test_job, 'interval', seconds=1, id='test_job')
+
+# Ingestion job every hour
+scheduler.add_job(ingestion_job, 'interval', hours=1, id='ingestion_job')
+
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
