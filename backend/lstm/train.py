@@ -1,3 +1,4 @@
+import random
 from math import ceil
 
 import pandas
@@ -10,7 +11,7 @@ import matplotlib.pyplot as plt
 from backend.api.routes import get_data_common
 from backend.lstm.model import LSTMModel
 
-NUMBER_EPOCHS = 10
+NUMBER_EPOCHS = 20
 BASE_MODEL_PATH = 'C:/Users/Tristan/Desktop/TAF/smart-city/backend/models'
 
 
@@ -27,7 +28,7 @@ def train_ai(X, y, metric, plot=False):
 
     model = LSTMModel()
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=10)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Metrics tracking
     epoch_losses = []
@@ -60,18 +61,19 @@ def train_ai(X, y, metric, plot=False):
         if avg_loss < best_loss:
             best_loss = avg_loss
             best_epoch = epoch + 1
-            model.eval()
-            with torch.no_grad():
-                best_pred = model(x_tensor[-1].unsqueeze(0)).item()
 
         # Epoch prediction logging
         model.eval()
         with torch.no_grad():
-            pred = model(x_tensor[-1].unsqueeze(0))
-            print(
-                f"Epoch {epoch + 1} - Loss: {avg_loss:.4f} | MAE: {avg_mae:.4f} | Predicted: {pred[0][0].item():.2f} | Expected: {y_tensor[-1].item():.2f}")
-            if epoch + 1 == NUMBER_EPOCHS:
-                LAST_EPOCH_RESULT = pred[0][0].item()
+            index = random.randint(0, len(y_tensor) - 1)
+            index2 = random.randint(0, len(y_tensor) - 1)
+            index3 = random.randint(0, len(y_tensor) - 1)
+            pred = model(x_tensor[index].unsqueeze(0)).item()
+            pred2 = model(x_tensor[index2].unsqueeze(0)).item()
+            pred3 = model(x_tensor[index3].unsqueeze(0)).item()
+            print(f"Epoch {epoch + 1} - Loss: {avg_loss:.4f} | MAE: {avg_mae:.4f} | Predicted: {pred:.2f} | Expected: {y_tensor[index].item():.2f}")
+            print(f"Epoch {epoch + 1} - Loss: {avg_loss:.4f} | MAE: {avg_mae:.4f} | Predicted: {pred2:.2f} | Expected: {y_tensor[index2].item():.2f}")
+            print(f"Epoch {epoch + 1} - Loss: {avg_loss:.4f} | MAE: {avg_mae:.4f} | Predicted: {pred3:.2f} | Expected: {y_tensor[index3].item():.2f}")
 
     # Save model
     torch.save(model, f"{BASE_MODEL_PATH}/{metric}.pt")
@@ -79,9 +81,7 @@ def train_ai(X, y, metric, plot=False):
     if plot:
         plot_model_training(epoch_losses, epoch_maes, best_epoch)
 
-    print(f"Prediction at Best Epoch: {best_pred:.2f}")
-
-    return LAST_EPOCH_RESULT
+    return
 
 
 def plot_model_training(epoch_losses, epoch_maes, best_epoch):

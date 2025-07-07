@@ -7,7 +7,7 @@ from backend.lstm.train import train_ai
 from backend.lstm.train_all_models import preprocess_train_data
 from backend.mapping.metrics import get_all_metrics
 
-metric = "temperature"
+metric = "humidity"
 NBR_ROW_TRAIN = 1000
 NBR_ROW_CHECK = 100
 
