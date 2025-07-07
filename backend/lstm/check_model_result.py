@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
@@ -17,18 +18,18 @@ def check_model():
         (x_train[-NBR_ROW_TRAIN:-NBR_ROW_CHECK], y_train[-NBR_ROW_TRAIN:-NBR_ROW_CHECK]),
         (x_train[-NBR_ROW_CHECK:], y_train[-NBR_ROW_CHECK:])
     )
-    train_ai(x_train, y_train, metric)
+    # train_ai(x_train, y_train, metric)
 
     model = torch.load(f'C:/Users/Tristan/Desktop/TAF/smart-city/backend/models/{metric}.pt')
 
     checks_expected = y_checks
     checks_actual = []
-    for x_check in x_checks:
-        check_actual = model(x_check)
+    for x_check in torch.from_numpy(x_checks.astype(np.float32)):
+        check_actual = model(x_check.unsqueeze(0)).item()
         checks_actual.append(check_actual)
 
     plt.plot(checks_expected, label='Expected', marker='o')
-    plt.plot(checks_actual, label='Actual', marker='x')
+    plt.plot(np.array(checks_actual), label='Actual', marker='x')
     plt.xlabel('Index')
     plt.ylabel('Value')
     plt.title('Comparison of Expected vs Actual')

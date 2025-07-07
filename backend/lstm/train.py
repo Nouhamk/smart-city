@@ -77,7 +77,7 @@ def train_ai(X, y, metric, plot=False):
     torch.save(model, f"{BASE_MODEL_PATH}/{metric}.pt")
 
     if plot:
-        plot_model_training()
+        plot_model_training(epoch_losses, epoch_maes, best_epoch)
 
     print(f"Prediction at Best Epoch: {best_pred:.2f}")
 
