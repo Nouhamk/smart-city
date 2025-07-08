@@ -4,7 +4,7 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 
-# Build avec Vite uniquement (sans vue-tsc)
+# Build avec Vite
 RUN npx vite build
 
 FROM nginx:alpine

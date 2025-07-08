@@ -8,10 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 5000
+EXPOSE 8000
 
-ENV FLASK_APP=api/routes.py.py
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=5000
-
-CMD ["python", "-m", "flask", "run", "--app", "api/routes.py"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
