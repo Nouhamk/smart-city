@@ -11,6 +11,13 @@ from rest_framework import serializers
 from django.contrib.auth.hashers import make_password, check_password
 from rest_framework_simplejwt.tokens import RefreshToken
 
+# drf-spectacular imports
+from drf_spectacular.utils import (
+    extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample,
+    OpenApiResponse, inline_serializer
+)
+from drf_spectacular.types import OpenApiTypes
+
 from .database import (
     create_user, get_user_by_username, get_user_by_id, update_user, delete_user,
     get_active_alerts, get_alert_history, acknowledge_alert, resolve_alert, get_alert_by_id,
@@ -19,16 +26,21 @@ from .database import (
     get_alert_threshold
 )
 
-# Serializers
+# ===== SERIALIZERS =====
+
 class RegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150, required=True)
-    email = serializers.EmailField(required=False, allow_blank=True)
-    password = serializers.CharField(min_length=8, required=True)
-    role = serializers.ChoiceField(choices=[('public', 'Public'), ('user', 'User'), ('admin', 'Admin')], default='user')
+    username = serializers.CharField(max_length=150, required=True, help_text="Unique username")
+    email = serializers.EmailField(required=False, allow_blank=True, help_text="User email address")
+    password = serializers.CharField(min_length=8, required=True, help_text="Password (minimum 8 characters)")
+    role = serializers.ChoiceField(
+        choices=[('public', 'Public'), ('user', 'User'), ('admin', 'Admin')],
+        default='user',
+        help_text="User role"
+    )
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150, required=True)
-    password = serializers.CharField(required=True)
+    username = serializers.CharField(max_length=150, required=True, help_text="Username")
+    password = serializers.CharField(required=True, help_text="Password")
 
 class CustomUserSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
@@ -37,6 +49,113 @@ class CustomUserSerializer(serializers.Serializer):
     role = serializers.CharField(max_length=10)
     created_at = serializers.DateTimeField(read_only=True)
 
+class LoginResponseSerializer(serializers.Serializer):
+    user = CustomUserSerializer()
+    access = serializers.CharField(help_text="JWT access token")
+    refresh = serializers.CharField(help_text="JWT refresh token")
+    message = serializers.CharField()
+
+class AlertSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    type = serializers.ChoiceField(choices=[('rain', 'Rain'), ('heatwave', 'Heatwave'), ('wind', 'Wind'), ('custom', 'Custom')])
+    message = serializers.CharField()
+    level = serializers.CharField()
+    status = serializers.ChoiceField(choices=[('active', 'Active'), ('acknowledged', 'Acknowledged'), ('resolved', 'Resolved'), ('archived', 'Archived')])
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+    acknowledged_at = serializers.DateTimeField(allow_null=True)
+    resolved_at = serializers.DateTimeField(allow_null=True)
+    data = serializers.JSONField(allow_null=True)
+
+class AlertThresholdSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    type = serializers.CharField(help_text="Threshold type (rain, heatwave, pollution, etc.)")
+    value = serializers.FloatField(help_text="Threshold value")
+    zone = serializers.CharField(allow_null=True, help_text="Geographic zone (optional)")
+
+class AlertThresholdRequestSerializer(serializers.Serializer):
+    type = serializers.CharField(help_text="Threshold type")
+    value = serializers.FloatField(help_text="Threshold value")
+    zone = serializers.CharField(required=False, allow_null=True, help_text="Geographic zone (optional)")
+
+class PredictionSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    type = serializers.CharField(help_text="Prediction type (pollution, rain, etc.)")
+    value = serializers.FloatField(help_text="Predicted value")
+    date = serializers.DateTimeField(help_text="Prediction date/time")
+    zone = serializers.CharField(allow_null=True, help_text="Geographic zone")
+    created_at = serializers.DateTimeField(read_only=True)
+
+class PredictionRequestSerializer(serializers.Serializer):
+    type = serializers.CharField(help_text="Prediction type")
+    value = serializers.FloatField(help_text="Predicted value")
+    date = serializers.DateTimeField(help_text="Prediction date/time")
+    zone = serializers.CharField(required=False, allow_null=True, help_text="Geographic zone (optional)")
+
+class UserUpdateSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150, required=False)
+    email = serializers.EmailField(required=False)
+    password = serializers.CharField(min_length=8, required=False)
+    role = serializers.ChoiceField(choices=[('public', 'Public'), ('user', 'User'), ('admin', 'Admin')], required=False)
+
+class ErrorResponseSerializer(serializers.Serializer):
+    error = serializers.CharField()
+    details = serializers.JSONField(required=False)
+
+# ===== VIEWS =====
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=['Authentication'],
+        summary='Register a new user',
+        description='Create a new user account with username, email, and password',
+        request=RegisterSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=CustomUserSerializer,
+                description='User created successfully'
+            ),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Validation error or username already exists',
+                examples=[
+                    OpenApiExample(
+                        'Validation Error',
+                        value={'error': 'Validation failed', 'details': {'username': ['This field is required.']}}
+                    ),
+                    OpenApiExample(
+                        'Username Exists',
+                        value={'error': 'Username already exists'}
+                    )
+                ]
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'User Registration',
+                summary='Regular user registration',
+                request_only=True,
+                value={
+                    'username': 'johndoe',
+                    'email': 'john@example.com',
+                    'password': 'securepassword123',
+                    'role': 'user'
+                }
+            ),
+            OpenApiExample(
+                'Admin Registration',
+                summary='Admin user registration',
+                request_only=True,
+                value={
+                    'username': 'admin',
+                    'email': 'admin@example.com',
+                    'password': 'adminpassword123',
+                    'role': 'admin'
+                }
+            ),
+        ]
+    )
+)
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -78,6 +197,34 @@ class RegisterView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+@extend_schema_view(
+    post=extend_schema(
+        tags=['Authentication'],
+        summary='User login',
+        description='Authenticate user and receive JWT tokens',
+        request=LoginSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=LoginResponseSerializer,
+                description='Login successful'
+            ),
+            401: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Invalid credentials'
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Login Example',
+                request_only=True,
+                value={
+                    'username': 'johndoe',
+                    'password': 'securepassword123'
+                }
+            )
+        ]
+    )
+)
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -136,6 +283,19 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Alerts'],
+        summary='Get active alerts',
+        description='Retrieve all currently active alerts',
+        responses={
+            200: OpenApiResponse(
+                response=AlertSerializer(many=True),
+                description='Active alerts retrieved successfully'
+            )
+        }
+    )
+)
 class AlertListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -143,6 +303,19 @@ class AlertListView(APIView):
         alerts = get_active_alerts()
         return Response(alerts)
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Alerts'],
+        summary='Get alert history',
+        description='Retrieve non-active alerts (acknowledged, resolved, archived)',
+        responses={
+            200: OpenApiResponse(
+                response=AlertSerializer(many=True),
+                description='Alert history retrieved successfully'
+            )
+        }
+    )
+)
 class AlertHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -150,6 +323,31 @@ class AlertHistoryView(APIView):
         alerts = get_alert_history()
         return Response(alerts)
 
+@extend_schema_view(
+    put=extend_schema(
+        tags=['Alerts'],
+        summary='Acknowledge an alert',
+        description='Mark an alert as acknowledged',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='Alert ID'
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=AlertSerializer,
+                description='Alert acknowledged successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Alert not found'
+            )
+        }
+    )
+)
 class AlertAcknowledgeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -163,6 +361,31 @@ class AlertAcknowledgeView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+@extend_schema_view(
+    put=extend_schema(
+        tags=['Alerts'],
+        summary='Resolve an alert',
+        description='Mark an alert as resolved',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='Alert ID'
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=AlertSerializer,
+                description='Alert resolved successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Alert not found'
+            )
+        }
+    )
+)
 class AlertResolveView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -176,6 +399,59 @@ class AlertResolveView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Users'],
+        summary='Get user details',
+        description='Retrieve user information by ID (admin only)',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='User ID'
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=CustomUserSerializer,
+                description='User details retrieved successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='User not found'
+            )
+        }
+    ),
+    put=extend_schema(
+        tags=['Users'],
+        summary='Update user',
+        description='Update user information (admin only)',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='User ID'
+            )
+        ],
+        request=UserUpdateSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=CustomUserSerializer,
+                description='User updated successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='User not found'
+            ),
+            500: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Failed to update user'
+            )
+        }
+    )
+)
 class UserUpdateView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -215,6 +491,34 @@ class UserUpdateView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+@extend_schema_view(
+    delete=extend_schema(
+        tags=['Users'],
+        summary='Delete user',
+        description='Delete a user account (admin only)',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='User ID'
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name='DeleteResponse',
+                    fields={'message': serializers.CharField()}
+                ),
+                description='User deleted successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='User not found'
+            )
+        }
+    )
+)
 class UserDeleteView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -228,6 +532,59 @@ class UserDeleteView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Alert Thresholds'],
+        summary='Get all alert thresholds',
+        description='Retrieve all configured alert thresholds (admin only)',
+        responses={
+            200: OpenApiResponse(
+                response=AlertThresholdSerializer(many=True),
+                description='Thresholds retrieved successfully'
+            )
+        }
+    ),
+    post=extend_schema(
+        tags=['Alert Thresholds'],
+        summary='Create alert threshold',
+        description='Create a new alert threshold (admin only)',
+        request=AlertThresholdRequestSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=AlertThresholdSerializer,
+                description='Threshold created successfully'
+            ),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Invalid request data'
+            ),
+            403: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Admin access required'
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Rain Threshold',
+                request_only=True,
+                value={
+                    'type': 'rain',
+                    'value': 50.0,
+                    'zone': 'paris'
+                }
+            ),
+            OpenApiExample(
+                'Global Temperature Threshold',
+                request_only=True,
+                value={
+                    'type': 'temperature',
+                    'value': 35.0,
+                    'zone': None
+                }
+            )
+        ]
+    )
+)
 class AlertThresholdViewSet(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -255,6 +612,58 @@ class AlertThresholdViewSet(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+@extend_schema_view(
+    put=extend_schema(
+        tags=['Alert Thresholds'],
+        summary='Update alert threshold',
+        description='Update an existing alert threshold (admin only)',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='Threshold ID'
+            )
+        ],
+        request=AlertThresholdRequestSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=AlertThresholdSerializer,
+                description='Threshold updated successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Threshold not found'
+            )
+        }
+    ),
+    delete=extend_schema(
+        tags=['Alert Thresholds'],
+        summary='Delete alert threshold',
+        description='Delete an alert threshold (admin only)',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='Threshold ID'
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name='ThresholdDeleteResponse',
+                    fields={'message': serializers.CharField()}
+                ),
+                description='Threshold deleted successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Threshold not found'
+            )
+        }
+    )
+)
 class AlertThresholdDetailView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -278,6 +687,57 @@ class AlertThresholdDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Predictions'],
+        summary='Get all predictions',
+        description='Retrieve all weather/environmental predictions (admin only)',
+        responses={
+            200: OpenApiResponse(
+                response=PredictionSerializer(many=True),
+                description='Predictions retrieved successfully'
+            )
+        }
+    ),
+    post=extend_schema(
+        tags=['Predictions'],
+        summary='Create prediction',
+        description='Create a new prediction (admin only)',
+        request=PredictionRequestSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=PredictionSerializer,
+                description='Prediction created successfully'
+            ),
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Invalid request data'
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Pollution Prediction',
+                request_only=True,
+                value={
+                    'type': 'pollution',
+                    'value': 75.5,
+                    'date': '2025-07-15T10:00:00Z',
+                    'zone': 'lyon'
+                }
+            ),
+            OpenApiExample(
+                'Rain Prediction',
+                request_only=True,
+                value={
+                    'type': 'rain',
+                    'value': 12.3,
+                    'date': '2025-07-16T14:00:00Z',
+                    'zone': 'paris'
+                }
+            )
+        ]
+    )
+)
 class PredictionViewSet(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -306,6 +766,58 @@ class PredictionViewSet(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+@extend_schema_view(
+    put=extend_schema(
+        tags=['Predictions'],
+        summary='Update prediction',
+        description='Update an existing prediction (admin only)',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='Prediction ID'
+            )
+        ],
+        request=PredictionRequestSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=PredictionSerializer,
+                description='Prediction updated successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Prediction not found'
+            )
+        }
+    ),
+    delete=extend_schema(
+        tags=['Predictions'],
+        summary='Delete prediction',
+        description='Delete a prediction (admin only)',
+        parameters=[
+            OpenApiParameter(
+                name='pk',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='Prediction ID'
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name='PredictionDeleteResponse',
+                    fields={'message': serializers.CharField()}
+                ),
+                description='Prediction deleted successfully'
+            ),
+            404: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description='Prediction not found'
+            )
+        }
+    )
+)
 class PredictionDetailView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -329,6 +841,22 @@ class PredictionDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+@extend_schema_view(
+    post=extend_schema(
+        tags=['Predictions'],
+        summary='Analyze predictions',
+        description='Analyze all predictions against thresholds and create alerts if values exceed thresholds (admin only)',
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name='AnalysisResponse',
+                    fields={'status': serializers.CharField()}
+                ),
+                description='Analysis completed successfully'
+            )
+        }
+    )
+)
 class PredictionAnalyzeView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
