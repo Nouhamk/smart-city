@@ -23,7 +23,7 @@ from .database import (
     get_active_alerts, get_alert_history, acknowledge_alert, resolve_alert, get_alert_by_id,
     get_alert_thresholds, create_alert_threshold, update_alert_threshold, delete_alert_threshold,
     get_predictions, create_prediction, update_prediction, delete_prediction, analyze_predictions,
-    get_alert_threshold
+    get_alert_threshold, get_regions
 )
 
 # ===== SERIALIZERS =====
@@ -97,6 +97,12 @@ class UserUpdateSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False)
     password = serializers.CharField(min_length=8, required=False)
     role = serializers.ChoiceField(choices=[('public', 'Public'), ('user', 'User'), ('admin', 'Admin')], required=False)
+
+class RegionSerializer(serializers.Serializer):
+    id = serializers.UUIDField(read_only=True)
+    name = serializers.CharField(help_text="Region name")
+    latitude = serializers.DecimalField(max_digits=10, decimal_places=7, help_text="Region latitude")
+    longitude = serializers.DecimalField(max_digits=10, decimal_places=7, help_text="Region longitude")
 
 class ErrorResponseSerializer(serializers.Serializer):
     error = serializers.CharField()
@@ -863,3 +869,23 @@ class PredictionAnalyzeView(APIView):
     def post(self, request):
         result = analyze_predictions()
         return Response({'status': result})
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Regions'],
+        summary='Get all regions',
+        description='Retrieve all available regions with their coordinates',
+        responses={
+            200: OpenApiResponse(
+                response=RegionSerializer(many=True),
+                description='Regions retrieved successfully'
+            )
+        }
+    )
+)
+class RegionListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        regions = get_regions()
+        return Response(regions)

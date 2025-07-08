@@ -155,31 +155,7 @@ AUTH_USER_MODEL = 'django_api.CustomUser'
 # drf-spectacular settings
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Django Data API',
-    'DESCRIPTION': '''
-    API for managing weather and environmental data with authentication, alerts, predictions, and thresholds.
-    
-    ## Authentication
-    This API uses JWT (JSON Web Tokens) for authentication. To access protected endpoints:
-    1. Register or login to get an access token
-    2. Click the "Authorize" button and enter: `Bearer <your_token>`
-    3. Include the space between "Bearer" and your token
-    
-    ## Features
-    - User management with role-based access (public, user, admin)
-    - Data retrieval with filtering by regions, dates, and metrics
-    - Alert system with thresholds and predictions
-    - Automated background jobs for data ingestion
-    
-    ## Rate Limits
-    - Data ingestion runs every hour automatically
-    - All endpoints require authentication except registration and login
-    ''',
-    'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
-    'CONTACT': {
-        'name': 'API Support',
-        'email': 'support@example.com',
-    },
     'SERVERS': [
         {
             'url': 'http://localhost:8000',
@@ -210,6 +186,10 @@ SPECTACULAR_SETTINGS = {
         {
             'name': 'Users',
             'description': 'User management (admin only)'
+        },
+        {
+            'name': 'Regions',
+            'description': 'Geographic regions and locations'
         },
     ],
     'COMPONENT_SPLIT_REQUEST': True,

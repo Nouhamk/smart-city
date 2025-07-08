@@ -185,3 +185,9 @@ def analyze_predictions() -> str:
             )
 
     return 'Analyse terminée'
+
+# Region functions
+def get_regions() -> List[Dict[str, Any]]:
+    """Get all regions"""
+    response = supabase.table("region").select("*").execute()
+    return response.data

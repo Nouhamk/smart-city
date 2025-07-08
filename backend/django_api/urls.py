@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
     TokenBlacklistView,
 )
@@ -14,7 +13,7 @@ from django_api.views import (
     RegisterView, LoginView, AlertListView, AlertHistoryView,
     AlertAcknowledgeView, AlertResolveView, UserUpdateView, UserDeleteView,
     AlertThresholdViewSet, AlertThresholdDetailView,
-    PredictionViewSet, PredictionDetailView, PredictionAnalyzeView
+    PredictionViewSet, PredictionDetailView, PredictionAnalyzeView, RegionListView
 )
 
 urlpatterns = [
@@ -49,6 +48,9 @@ urlpatterns = [
     path('api/predictions/', PredictionViewSet.as_view(), name='predictions-list'),
     path('api/predictions/<int:pk>/', PredictionDetailView.as_view(), name='predictions-detail'),
     path('api/predictions/analyze/', PredictionAnalyzeView.as_view(), name='predictions-analyze'),
+
+    # Regions
+    path('api/regions/', RegionListView.as_view(), name='regions-list'),
 
     # Data
     path('', include('data_api.urls'))
