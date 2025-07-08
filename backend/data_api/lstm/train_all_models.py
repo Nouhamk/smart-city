@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flatbuffers.number_types import np
+import numpy as np
 
 from backend.data_api.routes import get_data_common
 from backend.data_api.lstm.train import train_ai
@@ -54,5 +54,3 @@ def train_all_models():
     for metric in all_metrics[6:]:
         X, y = preprocess_train_data(data_train, metric)
         train_ai(X, y, metric)
-
-train_all_models()
