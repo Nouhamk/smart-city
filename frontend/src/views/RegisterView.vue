@@ -54,6 +54,23 @@
                   </div>
                 </div>
                 <div class="mb-3">
+                  <label for="role" class="form-label">Rôle</label>
+                  <select 
+                    class="form-select" 
+                    id="role" 
+                    v-model="role"
+                    required
+                    :class="{ 'is-invalid': submitted && !role }"
+                  >
+                    <option value="">Sélectionner un rôle</option>
+                    <option value="USER">Utilisateur</option>
+                    <option value="ADMIN">Administrateur</option>
+                  </select>
+                  <div v-if="submitted && !role" class="invalid-feedback">
+                    Le rôle est requis
+                  </div>
+                </div>
+                <div class="mb-3">
                   <label for="confirmPassword" class="form-label">Confirmer le mot de passe</label>
                   <input 
                     type="password" 
@@ -99,6 +116,7 @@
       const email = ref('')
       const password = ref('')
       const confirmPassword = ref('')
+      const role = ref('')  // Add this
       const errorMessage = ref('')
       const isLoading = ref(false)
       const submitted = ref(false)
@@ -118,7 +136,7 @@
         errorMessage.value = ''
         
         // Basic validation
-        if (!username.value || !email.value || !password.value || !confirmPassword.value) {
+        if (!username.value || !email.value || !password.value || !confirmPassword.value || !role.value) {
           errorMessage.value = 'Tous les champs sont requis'
           return
         }
@@ -141,10 +159,15 @@
           //  username: username.value,
           //  email: email.value,
           //  password: password.value,
+          //  role: role.value
           // })
           
           // For demonstration purposes, we'll just wait 1 second
           await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          // Store role in localStorage for demo
+          localStorage.setItem('roles', JSON.stringify([role.value]))
+          localStorage.setItem('isAdmin', (role.value === 'ADMIN').toString())
           
           // Show success and redirect
           alert('Inscription réussie ! Veuillez vous connecter.')
@@ -161,6 +184,7 @@
         email,
         password,
         confirmPassword,
+        role,  // Add this
         errorMessage,
         isLoading,
         submitted,
