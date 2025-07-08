@@ -4,6 +4,7 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import MapView from '../views/MapView.vue'
+import HistorySettingsView from '../views/HistorySettingsView.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -31,6 +32,12 @@ const routes: Array<RouteRecordRaw> = [
     path: '/map',
     name: 'map',
     component: MapView
+  },
+  {
+    path: '/history',
+    name: 'history',
+    component: HistorySettingsView,
+    meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
 
@@ -42,10 +49,14 @@ const router = createRouter({
 // Navigation guard for protected routes
 router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const isLoggedIn = localStorage.getItem('token') // À remplacer par une vérification plus robuste
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
+  const isLoggedIn = localStorage.getItem('token')
+  const isAdmin = localStorage.getItem('isAdmin') === 'true'
   
   if (requiresAuth && !isLoggedIn) {
     next('/login')
+  } else if (requiresAdmin && !isAdmin) {
+    next('/dashboard')
   } else {
     next()
   }
