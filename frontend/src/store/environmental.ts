@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { Measurement, Prediction, Alert, HistoryFilter } from '../types/models'
-import { environmentalService } from '../services/api.service'
+import { alertService, dataService } from '../services/api.service'
 
 export const useEnvironmentalStore = defineStore('environmental', () => {
   // State
