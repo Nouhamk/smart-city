@@ -1,26 +1,27 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { User } from '../types/models'
 import { authService } from '../services/api.service'
 
-interface AuthResponse {
-  refresh: string;
-  access: string;
-  user?: User;
-  roles?: string[];
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
 }
 
 export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null)
   const token = ref<string | null>(localStorage.getItem('token'))
-  const roles = ref<string[]>([])
+  const refreshToken = ref<string | null>(localStorage.getItem('refresh_token'))
   const loading = ref(false)
   const error = ref<string | null>(null)
   
   // Getters
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => roles.value.includes('ADMIN'))
+  const isAdmin = computed(() => user.value?.role === 'admin')
+  const isUser = computed(() => user.value?.role === 'user')
+  const isPublic = computed(() => user.value?.role === 'public')
   const username = computed(() => user.value?.username || '')
   
   // Actions
@@ -29,156 +30,211 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     
     try {
-      // Demo login handling
-      if (username === 'admin' && password === 'admin') {
-        token.value = 'demo-token'
-        roles.value = ['ADMIN']
-        user.value = {
-          id: 1,
-          username: 'admin',
-          email: 'admin@example.com',
-          isStaff: true
-        }
-        localStorage.setItem('token', token.value)
-        localStorage.setItem('roles', JSON.stringify(roles.value))
-        localStorage.setItem('isAdmin', 'true')
-        return true
-      }
-
-      // Regular API login
+      console.log('Tentative de connexion pour:', username)
+      
       const response = await authService.login({ username, password })
-      token.value = response.data.access
-      localStorage.setItem('token', response.data.access)
-      localStorage.setItem('refresh_token', response.data.refresh)
+      const { user: userData, access, refresh: refreshTokenValue, message } = response.data
       
-      // Set default role if none provided
-      const userRoles = response.data.roles || ['USER']
-      roles.value = userRoles
-      localStorage.setItem('roles', JSON.stringify(userRoles))
-      localStorage.setItem('isAdmin', userRoles.includes('ADMIN').toString())
+      // Stocker les tokens et les données utilisateur
+      token.value = access
+      refreshToken.value = refreshTokenValue
+      user.value = userData
       
-      await loadUserProfile()
+      // Persister dans localStorage
+      localStorage.setItem('token', access)
+      localStorage.setItem('refresh_token', refreshTokenValue)
+      localStorage.setItem('user', JSON.stringify(userData))
+      localStorage.setItem('isAdmin', (userData.role === 'admin').toString())
+      
+      console.log('Connexion réussie:', message)
       return true
+      
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Erreur de connexion'
-      token.value = null
-      roles.value = []
-      localStorage.removeItem('token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('roles')
-      localStorage.removeItem('isAdmin')
+      console.error('Erreur de connexion:', err)
+      
+      // Gérer les différents types d'erreurs
+      if (err.response?.status === 401) {
+        error.value = 'Identifiants invalides'
+      } else if (err.response?.status === 400) {
+        error.value = err.response?.data?.error || 'Données de connexion invalides'
+      } else if (err.response?.status === 500) {
+        error.value = 'Erreur serveur. Veuillez réessayer plus tard.'
+      } else {
+        error.value = 'Erreur de connexion. Vérifiez votre connexion internet.'
+      }
+      
+      // Nettoyer les données en cas d'erreur
+      clearAuthData()
       return false
+      
     } finally {
       loading.value = false
     }
   }
   
-  const register = async (userData: { username: string, email: string, password: string, role: string }) => {
+  const register = async (userData: { 
+    username: string, 
+    email: string, 
+    password: string, 
+    role?: string 
+  }) => {
     loading.value = true
     error.value = null
     
     try {
-      // Demo registration
-      const userRole = userData.role || 'USER'
-      localStorage.setItem('roles', JSON.stringify([userRole]))
-      localStorage.setItem('isAdmin', (userRole === 'ADMIN').toString())
-
-      // In production, use this:
-      // const response = await authService.register(userData)
-      // token.value = response.data.access
-      // localStorage.setItem('token', response.data.access)
-      // localStorage.setItem('refresh_token', response.data.refresh)
-      // await loadUserProfile()
+      console.log('Tentative d\'inscription pour:', userData.username)
       
+      const response = await authService.register({
+        ...userData,
+        role: userData.role || 'user' // Rôle par défaut
+      })
+      
+      const { user: newUser, access, refresh: refreshTokenValue, message } = response.data
+      
+      // Stocker les tokens et les données utilisateur
+      token.value = access
+      refreshToken.value = refreshTokenValue
+      user.value = newUser
+      
+      // Persister dans localStorage
+      localStorage.setItem('token', access)
+      localStorage.setItem('refresh_token', refreshTokenValue)
+      localStorage.setItem('user', JSON.stringify(newUser))
+      localStorage.setItem('isAdmin', (newUser.role === 'admin').toString())
+      
+      console.log('Inscription réussie:', message)
       return true
+      
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Erreur d\'inscription'
+      console.error('Erreur d\'inscription:', err)
+      
+      if (err.response?.status === 400) {
+        const errorData = err.response?.data
+        if (errorData?.error === 'Username already exists') {
+          error.value = 'Ce nom d\'utilisateur est déjà pris'
+        } else if (errorData?.details) {
+          // Gérer les erreurs de validation détaillées
+          const validationErrors = Object.values(errorData.details).flat()
+          error.value = validationErrors.join(', ')
+        } else {
+          error.value = errorData?.error || 'Données d\'inscription invalides'
+        }
+      } else if (err.response?.status === 500) {
+        error.value = 'Erreur serveur. Veuillez réessayer plus tard.'
+      } else {
+        error.value = 'Erreur d\'inscription. Vérifiez votre connexion internet.'
+      }
+      
       return false
     } finally {
       loading.value = false
     }
   }
   
-  const logout = () => {
-    token.value = null
-    user.value = null
-    roles.value = []
-    localStorage.removeItem('token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('roles')
-    localStorage.removeItem('isAdmin')
-  }
-  
-  const loadUserProfile = async () => {
-    if (!token.value) return
-    
+  const logout = async () => {
     loading.value = true
     
     try {
-      const response = await authService.getProfile()
-      user.value = response.data
-    } catch (err: any) {
-      error.value = 'Impossible de charger le profil utilisateur'
-      // Si erreur 401, déconnecter l'utilisateur
-      if (err.response?.status === 401) {
-        logout()
+      // Appeler l'endpoint de déconnexion si on a un refresh token
+      if (refreshToken.value) {
+        await authService.logout(refreshToken.value)
       }
+    } catch (err) {
+      console.warn('Erreur lors de la déconnexion côté serveur:', err)
+      // On continue le processus de déconnexion même en cas d'erreur
     } finally {
+      // Nettoyer les données locales dans tous les cas
+      clearAuthData()
       loading.value = false
     }
   }
   
-  // Improved role initialization
-  const initializeAuth = () => {
-    const storedToken = localStorage.getItem('token')
-    const storedRoles = localStorage.getItem('roles')
-    const isAdmin = localStorage.getItem('isAdmin')
-
-    if (storedToken) {
-      token.value = storedToken
+  const refreshAccessToken = async () => {
+    if (!refreshToken.value) {
+      throw new Error('Aucun refresh token disponible')
     }
     
-    if (storedRoles) {
+    try {
+      const response = await authService.refreshToken(refreshToken.value)
+      const { access } = response.data
+      
+      token.value = access
+      localStorage.setItem('token', access)
+      
+      return access
+    } catch (err) {
+      console.error('Erreur lors du rafraîchissement du token:', err)
+      // Si le refresh token est invalide, déconnecter l'utilisateur
+      clearAuthData()
+      throw err
+    }
+  }
+  
+  const clearAuthData = () => {
+    token.value = null
+    refreshToken.value = null
+    user.value = null
+    localStorage.removeItem('token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
+    localStorage.removeItem('isAdmin')
+  }
+  
+  // Initialiser l'état depuis localStorage
+  const initializeAuth = () => {
+    const storedToken = localStorage.getItem('token')
+    const storedRefreshToken = localStorage.getItem('refresh_token')
+    const storedUser = localStorage.getItem('user')
+    
+    if (storedToken && storedRefreshToken && storedUser) {
       try {
-        roles.value = JSON.parse(storedRoles)
-      } catch {
-        roles.value = ['USER'] // Fallback role
-        localStorage.setItem('roles', JSON.stringify(roles.value))
+        token.value = storedToken
+        refreshToken.value = storedRefreshToken
+        user.value = JSON.parse(storedUser)
+      } catch (err) {
+        console.error('Erreur lors de la restauration des données d\'authentification:', err)
+        clearAuthData()
       }
     }
-
-    // Ensure admin flag is in sync
-    if (isAdmin === 'true' && !roles.value.includes('ADMIN')) {
-      roles.value.push('ADMIN')
-      localStorage.setItem('roles', JSON.stringify(roles.value))
+  }
+  
+  // Vérifier si le token est valide (optionnel - peut être fait avec un endpoint /me)
+  const checkAuthStatus = async () => {
+    if (!token.value) return false
+    
+    try {
+      return true
+    } catch (err) {
+      console.error('Token invalide:', err)
+      clearAuthData()
+      return false
     }
   }
   
-  // Call initialize on store creation
+  // Initialiser lors de la création du store
   initializeAuth()
-  
-  // Initialiser - charger le profil si un token est présent
-  if (token.value) {
-    loadUserProfile()
-  }
   
   return {
     // State
     user,
     token,
-    roles,
+    refreshToken,
     loading,
     error,
     
     // Getters
     isAuthenticated,
     isAdmin,
+    isUser,
+    isPublic,
     username,
     
     // Actions
     login,
     register,
     logout,
-    loadUserProfile
+    refreshAccessToken,
+    clearAuthData,
+    checkAuthStatus
   }
 })
