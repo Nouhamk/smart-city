@@ -41,12 +41,26 @@
             <!-- Affichage des métriques météo réelles -->
             <div class="mb-3">
               <label class="form-label">Métriques météo réelles</label>
-              <ul class="list-group">
-                <li v-for="pred in predictions" :key="pred.id" class="list-group-item d-flex justify-content-between align-items-center">
-                  <span>{{ pred.type }} ({{ pred.zone || 'global' }})</span>
-                  <span><b>{{ pred.value }}</b> <span class="text-muted">({{ pred.date }})</span></span>
-                </li>
-              </ul>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Région</th>
+                    <th>Date</th>
+                    <th>Température</th>
+                    <th>Humidité</th>
+                    <th>Pression</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="pred in predictions" :key="pred.region_id">
+                    <td>{{ pred.region.name }}</td>
+                    <td>{{ pred.time }}</td>
+                    <td>{{ pred.temperature !== null ? pred.temperature.toFixed(1) + ' °C' : 'Non disponible' }}</td>
+                    <td>{{ pred.humidity !== null ? pred.humidity : 'Non disponible' }}</td>
+                    <td>{{ pred.pressure !== null ? pred.pressure : 'Non disponible' }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             <!-- Formulaire de config des seuils/poids -->

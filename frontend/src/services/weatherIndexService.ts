@@ -86,7 +86,7 @@ export const weatherIndexService = {
   // Obtenir l'indice météo actuel
   async getCurrentIndex(): Promise<WeatherIndex> {
     try {
-      const response: AxiosResponse<WeatherIndex> = await apiClient.get('/api/weather-index/');
+      const response: AxiosResponse<WeatherIndex> = await apiClient.get('/api/weather-index/current/');
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'indice météo actuel:', error);
