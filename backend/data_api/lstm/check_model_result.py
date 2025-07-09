@@ -35,4 +35,4 @@ def check_model():
     plt.grid(True)
     plt.show()
 
-check_model()
+# check_model()

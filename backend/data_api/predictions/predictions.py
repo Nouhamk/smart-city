@@ -8,17 +8,26 @@ from data_api.lstm.train_all_models import PACKET_SIZE, preprocess_train_data
 from data_api.mapping.metrics import get_all_metrics
 from data_api.supabase.database import load_regions, get_latest_timestamp_by_cities, merge_upsert_prediction
 
-from data_api.supabase.database import load_normalized_data
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def check_path_model():
+    base_model_path = os.path.join(BASE_DIR, '..', 'models')
+    os.makedirs(base_model_path, exist_ok=True)
+
+    return base_model_path
+
 
 PREDICTION_METRICS = ["temperature"]
 
 def write_predictions():
+    base_model_path = check_path_model()
+
     all_metrics = get_all_metrics()
     all_regions = load_regions()
     latest_timestamp_by_cities = get_latest_timestamp_by_cities()
 
     for metric in PREDICTION_METRICS:
-        model = torch.load(f'./../../data_api/models/{metric}.pt')
+        model = torch.load(os.path.join(base_model_path, f"{metric}.pt"))
 
         for region in all_regions:
             latest_timestamp = next(filter(
@@ -50,4 +59,4 @@ def write_predictions():
 
 
 
-write_predictions()
+# write_predictions()

@@ -29,4 +29,4 @@ def update_ingestion(end_date = date.today()):
 
     save_normalized_data(all_data)
 
-update_ingestion()
+# update_ingestion()

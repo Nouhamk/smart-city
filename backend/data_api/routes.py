@@ -1,10 +1,10 @@
 from datetime import datetime, date
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-from data_api.data.data import get_data_common
-from data_api.ingestion import update_ingestion
+from data_api.data.data import get_data_common, get_predictions
+from data_api.ingestion.update_ingestion import update_ingestion
 
 from drf_spectacular.utils import (
     extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample,
@@ -195,6 +195,7 @@ class ErrorResponseSerializer(serializers.Serializer):
         }
     )
 )
+
 class DataView(APIView):
     """
     API view to retrieve normalized data based on regions, date range, and metrics.
@@ -203,19 +204,21 @@ class DataView(APIView):
 
     def get(self, request):
         return get_data_common(
-            regions=request.get_json().get('regions'),
-            start=request.get_json().get('start'),
-            end=request.get_json().get('end'),
-            metrics=request.get_json().get('metrics')
+            regions=request.data.get('regions'),
+            start=request.data.get('start'),
+            end=request.data.get('end'),
+            metrics=request.data.get('metrics')
         )
 
-    def get_predictions(self, request):
-        return get_data_common(
-            regions=request.get_json().get('regions'),
-            start=date.now(),
-            metrics=request.get_json().get('metrics')
-        )
+class PredictionView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        return get_predictions(
+            regions=request.data.get('regions'),
+            start=request.data.get('start'),
+            metrics=request.data.get('metrics')
+        )
 
 def ingestion_job():
     current_time = datetime.now().strftime("%H:%M:%S")
