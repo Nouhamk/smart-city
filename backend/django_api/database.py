@@ -129,63 +129,6 @@ def delete_alert_threshold(threshold_id: int) -> bool:
     response = supabase.table("alert_threshold").delete().eq("id", threshold_id).execute()
     return len(response.data) > 0
 
-# Prediction functions
-def create_prediction(pred_type: str, value: float, date: str, zone: str = None) -> Dict[str, Any]:
-    """Create prediction"""
-    prediction_data = {
-        'type': pred_type,
-        'value': value,
-        'date': date,
-        'zone': zone,
-        'created_at': datetime.now().isoformat()
-    }
-
-    response = supabase.table("prediction").insert(prediction_data).execute()
-    return response.data[0] if response.data else None
-
-def get_predictions() -> List[Dict[str, Any]]:
-    """Get all predictions"""
-    response = supabase.table("prediction").select("*").execute()
-    return response.data
-
-def get_prediction_by_id(prediction_id: int) -> Optional[Dict[str, Any]]:
-    """Get prediction by ID"""
-    response = supabase.table("prediction").select("*").eq("id", prediction_id).execute()
-    return response.data[0] if response.data else None
-
-def update_prediction(prediction_id: int, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Update prediction"""
-    response = supabase.table("prediction").update(data).eq("id", prediction_id).execute()
-    return response.data[0] if response.data else None
-
-def delete_prediction(prediction_id: int) -> bool:
-    """Delete prediction"""
-    response = supabase.table("prediction").delete().eq("id", prediction_id).execute()
-    return len(response.data) > 0
-
-def analyze_predictions() -> str:
-    """Analyze predictions and create alerts"""
-    predictions = get_predictions()
-
-    for pred in predictions:
-        threshold_data = get_alert_threshold(pred['type'], pred.get('zone'))
-        if not threshold_data:
-            continue
-
-        if pred['value'] > threshold_data['value']:
-            create_alert(
-                alert_type=pred['type'],
-                message=f"Prédiction : {pred['value']} dépasse le seuil {threshold_data['value']}",
-                level='warning',
-                data={
-                    'prediction_id': pred['id'],
-                    'value': pred['value'],
-                    'threshold': threshold_data['value']
-                }
-            )
-
-    return 'Analyse terminée'
-
 # Region functions
 def get_regions() -> List[Dict[str, Any]]:
     """Get all regions"""

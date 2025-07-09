@@ -11,11 +11,6 @@ class AlertThresholdSerializer(serializers.ModelSerializer):
         model = AlertThreshold
         fields = '__all__'
 
-class PredictionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Prediction
-        fields = '__all__'
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser

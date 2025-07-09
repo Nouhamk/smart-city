@@ -13,7 +13,7 @@ from django_api.views import (
     RegisterView, LoginView, AlertListView, AlertHistoryView,
     AlertAcknowledgeView, AlertResolveView, UserUpdateView, UserDeleteView,
     AlertThresholdViewSet, AlertThresholdDetailView,
-    PredictionViewSet, PredictionDetailView, PredictionAnalyzeView, RegionListView
+    RegionListView
 )
 
 urlpatterns = [
@@ -43,11 +43,6 @@ urlpatterns = [
     # Alert Thresholds
     path('api/alert-thresholds/', AlertThresholdViewSet.as_view(), name='alert-thresholds-list'),
     path('api/alert-thresholds/<int:pk>/', AlertThresholdDetailView.as_view(), name='alert-thresholds-detail'),
-
-    # Predictions
-    path('api/predictions/', PredictionViewSet.as_view(), name='predictions-list'),
-    path('api/predictions/<int:pk>/', PredictionDetailView.as_view(), name='predictions-detail'),
-    path('api/predictions/analyze/', PredictionAnalyzeView.as_view(), name='predictions-analyze'),
 
     # Regions
     path('api/regions/', RegionListView.as_view(), name='regions-list'),

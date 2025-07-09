@@ -52,19 +52,6 @@ class AlertThreshold(models.Model):
     def __str__(self):
         return f"{self.type} - {self.value} - {self.zone or 'global'}"
 
-class Prediction(models.Model):
-    type = models.CharField(max_length=20)  # ex: 'pollution', 'rain', etc.
-    value = models.FloatField()
-    date = models.DateTimeField()
-    zone = models.CharField(max_length=50, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        managed = False
-
-    def __str__(self):
-        return f"{self.type} - {self.value} - {self.date} - {self.zone or 'global'}"
-
 class Region(models.Model):
     id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=255)
