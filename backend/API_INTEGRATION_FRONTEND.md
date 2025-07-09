@@ -160,8 +160,36 @@
 }
 ```
 
-## 6. Gestion des erreurs
+## 6. Régions géographiques
+
+### a. Lister toutes les régions
+- **Endpoint** : `GET /api/regions/`
+- **Réponse** :
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Paris",
+    "latitude": "48.8566140",
+    "longitude": "2.3522219"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Lyon",
+    "latitude": "45.7640430",
+    "longitude": "4.8356680"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "name": "Marseille",
+    "latitude": "43.2964820",
+    "longitude": "5.3698280"
+  }
+]
+```
+
+## 7. Gestion des erreurs
 - **401 Unauthorized** : Token manquant ou invalide.
 - **403 Forbidden** : Accès refusé (rôle insuffisant).
 - **404 Not Found** : Ressource inexistante.
-- **400 Bad Request** : Données invalides. 
+- **400 Bad Request** : Données invalides.

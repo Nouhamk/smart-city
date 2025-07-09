@@ -64,3 +64,15 @@ class Prediction(models.Model):
 
     def __str__(self):
         return f"{self.type} - {self.value} - {self.date} - {self.zone or 'global'}"
+
+class Region(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=255)
+    latitude = models.DecimalField(max_digits=10, decimal_places=7)
+    longitude = models.DecimalField(max_digits=10, decimal_places=7)
+
+    class Meta:
+        managed = False
+
+    def __str__(self):
+        return self.name

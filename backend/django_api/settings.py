@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'data_api',
+    'drf_spectacular',  # Added for API documentation
 ]
 
 MIDDLEWARE = [
@@ -125,6 +126,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'django_api.authentication.SupabaseJWTAuthentication',
@@ -132,8 +134,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+# JWT configuration
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -142,6 +146,77 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# CORS configuration
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Custom user model
 AUTH_USER_MODEL = 'django_api.CustomUser'
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Django Data API',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SERVERS': [
+        {
+            'url': 'http://localhost:8000',
+            'description': 'Development server',
+        },
+    ],
+    'TAGS': [
+        {
+            'name': 'Authentication',
+            'description': 'User registration, login, and token management'
+        },
+        {
+            'name': 'Data',
+            'description': 'Weather and environmental data retrieval'
+        },
+        {
+            'name': 'Alerts',
+            'description': 'Alert management and monitoring'
+        },
+        {
+            'name': 'Alert Thresholds',
+            'description': 'Threshold configuration for alerts'
+        },
+        {
+            'name': 'Predictions',
+            'description': 'Weather and environmental predictions'
+        },
+        {
+            'name': 'Users',
+            'description': 'User management (admin only)'
+        },
+        {
+            'name': 'Regions',
+            'description': 'Geographic regions and locations'
+        },
+    ],
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SORT_OPERATIONS': False,
+    'SCHEMA_PATH_PREFIX': r'/api/',
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+        'displayRequestDuration': True,
+    },
+    'REDOC_UI_SETTINGS': {
+        'hideDownloadButton': False,
+        'expandResponses': 'all',
+        'pathInMiddlePanel': True,
+    },
+    # Explicitly define security schemes
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+                'description': 'JWT token obtained from login endpoint. Format: Bearer <your_token>'
+            }
+        }
+    },
+    'SECURITY': [{'bearerAuth': []}],
+}
