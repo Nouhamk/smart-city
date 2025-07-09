@@ -1,1 +1,1 @@
-# Module pour l'indice météo global 
+# Module weather_index pour le calcul de l'indice météo global 

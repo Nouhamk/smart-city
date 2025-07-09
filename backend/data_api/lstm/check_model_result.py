@@ -5,12 +5,12 @@ from matplotlib import pyplot as plt
 from data_api.data.data import get_data_common
 from data_api.lstm.train_all_models import preprocess_train_data
 
-metric = "temperature"
+metric = "humidity"
 NBR_ROW_TRAIN = 1000
 NBR_ROW_CHECK = 100
 
 def check_model():
-    data_train = get_data_common(regions=["Paris"])
+    data_train = get_data_common(regions=["paris"])
     x, y = preprocess_train_data(data_train, metric)[:NBR_ROW_TRAIN + NBR_ROW_CHECK]
     ((x_train, y_train), (x_checks, y_checks)) = (
         (x[-NBR_ROW_TRAIN:-NBR_ROW_CHECK], y[-NBR_ROW_TRAIN:-NBR_ROW_CHECK]),
@@ -30,7 +30,7 @@ def check_model():
     plt.plot(np.array(checks_actual), label='Actual', marker='x')
     plt.xlabel('Index')
     plt.ylabel('Value')
-    plt.title('Comparison of Expected vs Actual')
+    plt.title(f'Comparison of Expected {metric} vs Actual {metric}')
     plt.legend()
     plt.grid(True)
     plt.show()

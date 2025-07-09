@@ -175,9 +175,10 @@ export const thresholdService = {
 
 // Service pour les prédictions (admin seulement)
 export const predictionService = {
-  // GET /api/predictions/
-  getPredictions(): Promise<AxiosResponse<Prediction[]>> {
-    return apiClient.get<Prediction[]>('/api/predictions/');
+  async getPredictions(token: string) {
+    return apiClient.get('/api/prediction/', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
   },
 
   // POST /api/predictions/
