@@ -1,3 +1,4 @@
+import os
 import random
 from math import ceil
 
@@ -7,15 +8,21 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 
-from backend.data_api.lstm.model import LSTMModel
+from data_api.lstm.model import LSTMModel
 
-NUMBER_EPOCHS = 20
-BASE_MODEL_PATH = 'C:/Users/Tristan/Desktop/TAF/smart-city/backend/models'
+NUMBER_EPOCHS = 10
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def check_path_model():
+    base_model_path = os.path.join(BASE_DIR, '..', 'models')
+    os.makedirs(base_model_path, exist_ok=True)
+
+    return base_model_path
 
 
 def train_ai(X, y, metric, plot=False):
-    X = X[ceil(len(X) * 0.9):]
-    y = y[ceil(len(y) * 0.9):]
+    base_model_path = check_path_model()
+
     global LAST_EPOCH_RESULT
 
     x_tensor = torch.tensor(X, dtype=torch.float32)  # [batch, seq_len, 1]
@@ -26,7 +33,7 @@ def train_ai(X, y, metric, plot=False):
 
     model = LSTMModel()
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0005)
 
     # Metrics tracking
     epoch_losses = []
@@ -74,7 +81,7 @@ def train_ai(X, y, metric, plot=False):
             print(f"Epoch {epoch + 1} - Loss: {avg_loss:.4f} | MAE: {avg_mae:.4f} | Predicted: {pred3:.2f} | Expected: {y_tensor[index3].item():.2f}")
 
     # Save model
-    torch.save(model, f"{BASE_MODEL_PATH}/{metric}.pt")
+    torch.save(model, os.path.join(base_model_path, f"{metric}.pt"))
 
     if plot:
         plot_model_training(epoch_losses, epoch_maes, best_epoch)

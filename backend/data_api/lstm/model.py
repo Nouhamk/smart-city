@@ -3,9 +3,9 @@ import torch.nn as nn
 class LSTMModel(nn.Module):
     def __init__(self):
         super(LSTMModel, self).__init__()
-        self.lstm1 = nn.LSTM(input_size=16, hidden_size=128, batch_first=True)
-        self.lstm2 = nn.LSTM(input_size=128, hidden_size=128, batch_first=True)
-        self.fc1 = nn.Linear(128, 32)
+        self.lstm1 = nn.LSTM(input_size=14, hidden_size=32, batch_first=True)
+        self.lstm2 = nn.LSTM(input_size=32, hidden_size=32, batch_first=True)
+        self.fc1 = nn.Linear(32, 32)
         self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(32, 16)
         self.relu2 = nn.ReLU()

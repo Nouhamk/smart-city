@@ -1,9 +1,9 @@
 from datetime import date
 
-from backend.data_api.ingestion.cities_ingestion import save_cities_to_supabase
-from backend.data_api.mapping.metrics import get_all_metrics
-from backend.data_api.openmeteo import get_openmeteo_data
-from backend.supabase.database import save_normalized_data, load_regions
+from data_api.ingestion.cities_ingestion import save_cities_to_supabase
+from data_api.mapping.metrics import get_all_metrics
+from data_api.openmeteo import get_openmeteo_data
+from supabase.database import save_normalized_data, load_regions
 
 START_DATE_INGESTION = '2025-03-01'
 END_DATE_INGESTION = '2025-05-23'

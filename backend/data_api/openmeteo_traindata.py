@@ -1,7 +1,7 @@
 import requests
 
-from backend.data_api.lstm.model import train_ai
-from backend.data_api.mapping.openmeteo_mapping import convert_to_df
+from data_api.lstm.model import train_ai
+from data_api.mapping.openmeteo_mapping import convert_to_df
 
 latitude = 40.7128  # Example: Latitude for New York City
 longitude = -74.0060  # Example: Longitude for New York City
