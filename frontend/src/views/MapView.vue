@@ -30,7 +30,7 @@
                 <label for="region" class="form-label">Région</label>
                 <select v-model="filters.region" class="form-select" id="region">
                   <option value="all">Toutes</option>
-                  <option v-for="prediction in predictions" :key="prediction.region.id" :value="prediction.region.name">{{ prediction.region.name }}</option>
+                  <option v-for="prediction in predictions" :key="prediction.city" :value="prediction.city">{{ prediction.city }}</option>
                 </select>
               </div>
             </div>
@@ -158,6 +158,16 @@
     quality: string;
   }
   
+  // Coordonnées GPS pour chaque ville
+  const cityCoordinates: Record<string, { lat: number; lng: number }> = {
+    'new york': { lat: 40.7128, lng: -74.0060 },
+    'los angeles': { lat: 34.0522, lng: -118.2437 },
+    'london': { lat: 51.5074, lng: -0.1278 },
+    'paris': { lat: 48.8566, lng: 2.3522 },
+    'berlin': { lat: 52.5200, lng: 13.4050 },
+    'tokyo': { lat: 35.6895, lng: 139.6917 },
+  };
+  
   export default defineComponent({
     name: 'MapView',
     setup() {
@@ -175,6 +185,7 @@
       });
       const predictions = ref<any[]>([]);
       const loading = ref(false);
+      const error = ref('');
       
       // Méthode pour obtenir la couleur en fonction de la valeur
       const getQualityColor = (value: number): string => {
@@ -304,7 +315,7 @@
         
         // Filtrer les prédictions
         const filteredPredictions = predictions.value.filter(prediction => {
-          if (filters.region !== 'all' && prediction.region.name !== filters.region) return false;
+          if (filters.region !== 'all' && prediction.city !== filters.region) return false;
           
           if (filters.quality !== 'all') {
             if (filters.quality === 'low' && prediction.weatherIndex > 30) return false;
@@ -327,7 +338,7 @@
           const marker = L.marker([prediction.coordinates.lat, prediction.coordinates.lng], { icon: markerIcon }).addTo(map.value!);
           
           // Popup et événements
-          marker.bindTooltip(`${prediction.region.name}: ${prediction.weatherIndex} (${getIndexLabel(prediction.weatherIndex)})`);
+          marker.bindTooltip(`${prediction.city}: ${prediction.weatherIndex} (${getIndexLabel(prediction.weatherIndex)})`);
           marker.on('click', () => showRegionDetail(prediction));
           
           markers.value.push(marker);
@@ -350,7 +361,7 @@
         if (!searchQuery.value || !map.value) return;
         
         const prediction = predictions.value.find(p => 
-          p.region.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+          p.city.toLowerCase().includes(searchQuery.value.toLowerCase())
         );
         
         if (prediction) {
@@ -374,7 +385,7 @@
         // Rediriger vers la page d'historique avec la région
         router.push({
           name: 'history',
-          query: { region: selectedRegion.value.region.name }
+          query: { region: selectedRegion.value.city }
         });
       };
       
@@ -514,5 +525,20 @@
   :deep(.custom-marker) {
     background: transparent;
     border: none;
+  }
+  .table-responsive-authority {
+    overflow-x: auto;
+  }
+  .map-marker {
+    /* Style pour les marqueurs sur la carte */
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.95em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    min-width: 120px;
+    text-align: center;
   }
   </style>
