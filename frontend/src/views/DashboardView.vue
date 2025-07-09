@@ -41,8 +41,13 @@
 
     <!-- KPI principaux -->
     <div class="row mb-4">
+      <!-- Indice Météo Global -->
+      <div class="col-lg-6 mb-3">
+        <WeatherIndexCard :region="selectedCity !== 'all' ? selectedCity : null" />
+      </div>
+      
       <!-- Valeur actuelle -->
-      <div class="col-md-4 mb-3">
+      <div class="col-lg-3 mb-3">
         <div class="card h-100">
           <div class="card-header">
             <h5 class="mb-0">Valeur actuelle</h5>
@@ -58,7 +63,7 @@
       </div>
 
       <!-- Moyenne -->
-      <div class="col-md-4 mb-3">
+      <div class="col-lg-3 mb-3">
         <div class="card h-100">
           <div class="card-header">
             <h5 class="mb-0">Moyenne (24h)</h5>
@@ -69,33 +74,6 @@
               <span class="ms-2">{{ metricConfig.unit }}</span>
             </div>
             <div class="text-muted">{{ metricConfig.label }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Min/Max -->
-      <div class="col-md-4 mb-3">
-        <div class="card h-100">
-          <div class="card-header">
-            <h5 class="mb-0">Min / Max (24h)</h5>
-          </div>
-          <div class="card-body">
-            <div class="row">
-              <div class="col-6">
-                <div class="text-muted">Min</div>
-                <div class="d-flex align-items-baseline">
-                  <h4 class="mb-0">{{ getMinValue() }}</h4>
-                  <small class="ms-1">{{ metricConfig.unit }}</small>
-                </div>
-              </div>
-              <div class="col-6">
-                <div class="text-muted">Max</div>
-                <div class="d-flex align-items-baseline">
-                  <h4 class="mb-0">{{ getMaxValue() }}</h4>
-                  <small class="ms-1">{{ metricConfig.unit }}</small>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -131,36 +109,10 @@
         </div>
       </div>
     </div>
-    <!-- Section Alertes récentes -->
+    <!-- Alertes d'indice météo -->
     <div class="row mb-4">
       <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0">Alertes récentes</h5>
-          </div>
-          <div class="card-body p-0">
-            <div v-if="alerts.length === 0" class="text-center p-3">
-              <p class="text-muted mb-0">Aucune alerte active</p>
-            </div>
-            <div v-else>
-              <div v-for="(alert, index) in alerts" :key="index" 
-                   class="alert-item border-start border-5" 
-                   :class="getAlertClass(alert.level)">
-                <div class="d-flex p-3">
-                  <div class="alert-icon me-3">
-                    <i class="bi" :class="getAlertIcon(alert.level)"></i>
-                  </div>
-                  <div class="alert-content flex-grow-1">
-                    <h6 class="mb-1 fw-bold">{{ alert.title }}</h6>
-                    <p class="mb-1">{{ alert.description }}</p>
-                    <small class="text-muted">{{ formatDate(alert.timestamp) }}</small>
-                  </div>
-                </div>
-                <div v-if="index < alerts.length - 1" class="border-bottom"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <WeatherIndexAlerts />
       </div>
     </div>
     <!-- Graphique de comparaison par ville -->
@@ -224,6 +176,8 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted, watch, computed } from 'vue';
 import Chart from 'chart.js/auto';
+import WeatherIndexCard from '../components/weather/WeatherIndexCard.vue';
+import WeatherIndexAlerts from '../components/weather/WeatherIndexAlerts.vue';
 import environmentalApiService from '@/services/environmentalApiService';
 
 // Types
@@ -251,6 +205,10 @@ interface Alert {
 
 export default defineComponent({
   name: 'EnvironmentalDashboard',
+  components: {
+    WeatherIndexCard,
+    WeatherIndexAlerts
+  },
   setup() {
     // Références pour les graphiques
     const lineChartRef = ref<HTMLCanvasElement | null>(null);

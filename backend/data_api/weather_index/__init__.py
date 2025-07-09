@@ -1,0 +1,1 @@
+# Module pour l'indice météo global 
