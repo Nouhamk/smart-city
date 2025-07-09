@@ -31,54 +31,48 @@
             <h5 class="mb-0">Paramètres d'autorité</h5>
           </div>
           <div class="card-body">
-            <form @submit.prevent="saveSettings">
+            <div v-if="loadingPredictions || loadingConfig" class="mb-3">
+              <span class="spinner-border spinner-border-sm me-2"></span> Chargement...
+            </div>
+            <div v-if="errorPredictions || errorConfig" class="alert alert-danger mb-3">
+              {{ errorPredictions || errorConfig }}
+            </div>
+
+            <!-- Affichage des métriques météo réelles -->
+            <div class="mb-3">
+              <label class="form-label">Métriques météo réelles</label>
+              <ul class="list-group">
+                <li v-for="pred in predictions" :key="pred.id" class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>{{ pred.type }} ({{ pred.zone || 'global' }})</span>
+                  <span><b>{{ pred.value }}</b> <span class="text-muted">({{ pred.date }})</span></span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Formulaire de config des seuils/poids -->
+            <form @submit.prevent="saveConfig" v-if="weatherConfig">
               <div class="mb-3">
-                <label class="form-label">Seuil d'alerte</label>
-                <div class="input-group">
-                  <input 
-                    type="number" 
-                    class="form-control" 
-                    v-model="settings.alertThreshold"
-                    min="0"
-                    max="100"
-                  >
-                  <span class="input-group-text">%</span>
+                <label class="form-label">Seuil critique</label>
+                <input type="number" class="form-control" v-model.number="weatherConfig.critical_threshold">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Seuil élevé</label>
+                <input type="number" class="form-control" v-model.number="weatherConfig.high_threshold">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Seuil moyen</label>
+                <input type="number" class="form-control" v-model.number="weatherConfig.medium_threshold">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Poids par métrique</label>
+                <div v-for="(weight, metric) in weatherConfig.weights" :key="metric" class="input-group mb-1">
+                  <span class="input-group-text">{{ metric }}</span>
+                  <input type="number" step="0.01" class="form-control" v-model.number="weatherConfig.weights[metric]">
                 </div>
               </div>
-
-              <div class="mb-3">
-                <label class="form-label">Fréquence de notification</label>
-                <select class="form-select" v-model="settings.notificationFrequency">
-                  <option value="realtime">Temps réel</option>
-                  <option value="hourly">Toutes les heures</option>
-                  <option value="daily">Quotidien</option>
-                </select>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Zone de surveillance</label>
-                <select class="form-select" v-model="settings.monitoringZone" multiple>
-                  <option v-for="city in cities" :key="city" :value="city">
-                    {{ city }}
-                  </option>
-                </select>
-              </div>
-
-              <div class="form-check mb-3">
-                <input 
-                  type="checkbox" 
-                  class="form-check-input" 
-                  id="autoAlert"
-                  v-model="settings.autoAlert"
-                >
-                <label class="form-check-label" for="autoAlert">
-                  Alertes automatiques
-                </label>
-              </div>
-
               <button type="submit" class="btn btn-primary" :disabled="isSaving">
                 <span v-if="isSaving" class="spinner-border spinner-border-sm me-2"></span>
-                Enregistrer
+                Enregistrer la configuration
               </button>
             </form>
           </div>
@@ -156,6 +150,8 @@ import { useEnvironmentalStore } from '../store/environmental';
 import WeatherIndexCard from '@/components/weather/WeatherIndexCard.vue';
 import WeatherIndexAlerts from '@/components/weather/WeatherIndexAlerts.vue';
 import type { WeatherIndex, WeatherAlert } from '@/services/weatherIndexService';
+import { predictionService } from '@/services/api.service';
+import weatherIndexService from '@/services/weatherIndexService';
 
 export default defineComponent({
   name: 'HistorySettingsView',
@@ -199,6 +195,54 @@ export default defineComponent({
       },
       // ... more data
     ]);
+
+    // Météo réelle
+    const predictions = ref<any[]>([]);
+    const weatherConfig = ref<any>(null);
+    const loadingPredictions = ref(false);
+    const loadingConfig = ref(false);
+    const errorPredictions = ref('');
+    const errorConfig = ref('');
+
+    // Charger les prédictions météo réelles
+    const loadPredictions = async () => {
+      loadingPredictions.value = true;
+      errorPredictions.value = '';
+      try {
+        const res = await predictionService.getPredictions();
+        predictions.value = res.data;
+      } catch (e: any) {
+        errorPredictions.value = e?.message || 'Erreur lors du chargement des prédictions';
+      } finally {
+        loadingPredictions.value = false;
+      }
+    };
+
+    // Charger la config de l'indice météo
+    const loadConfig = async () => {
+      loadingConfig.value = true;
+      errorConfig.value = '';
+      try {
+        weatherConfig.value = await weatherIndexService.getConfig();
+      } catch (e: any) {
+        errorConfig.value = e?.message || 'Erreur lors du chargement de la config';
+      } finally {
+        loadingConfig.value = false;
+      }
+    };
+
+    // Sauvegarder la config
+    const saveConfig = async () => {
+      isSaving.value = true;
+      try {
+        await weatherIndexService.updateConfig(weatherConfig.value);
+        await loadConfig();
+      } catch (e: any) {
+        alert('Erreur lors de la sauvegarde de la config : ' + (e?.message || '')); 
+      } finally {
+        isSaving.value = false;
+      }
+    };
 
     // Methods
     const saveSettings = async () => {
@@ -246,7 +290,8 @@ export default defineComponent({
     };
 
     onMounted(() => {
-      // Load initial data
+      loadPredictions();
+      loadConfig();
     });
 
     return {
@@ -264,7 +309,16 @@ export default defineComponent({
       onIndexUpdated,
       onIndexError,
       onAlertsUpdated,
-      onAlertsError
+      onAlertsError,
+      predictions,
+      weatherConfig,
+      loadingPredictions,
+      loadingConfig,
+      errorPredictions,
+      errorConfig,
+      loadPredictions,
+      loadConfig,
+      saveConfig
     };
   }
 });
