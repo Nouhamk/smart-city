@@ -2,6 +2,27 @@
   <div class="history-settings">
     <h1 class="mb-4">Paramètres et Historique</h1>
 
+    <!-- Section Indice Météo Global -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <WeatherIndexCard 
+          :auto-refresh="true" 
+          :refresh-interval="300000"
+          @index-updated="onIndexUpdated"
+          @error="onIndexError"
+        />
+      </div>
+      <div class="col-md-6">
+        <WeatherIndexAlerts 
+          :auto-refresh="true" 
+          :refresh-interval="60000"
+          status="active"
+          @alerts-updated="onAlertsUpdated"
+          @error="onAlertsError"
+        />
+      </div>
+    </div>
+
     <div class="row">
       <!-- Section Paramètres -->
       <div class="col-md-4 mb-4">
@@ -132,13 +153,24 @@
 <script lang="ts">
 import { defineComponent, ref, reactive, onMounted } from 'vue';
 import { useEnvironmentalStore } from '../store/environmental';
+import WeatherIndexCard from '@/components/weather/WeatherIndexCard.vue';
+import WeatherIndexAlerts from '@/components/weather/WeatherIndexAlerts.vue';
+import type { WeatherIndex, WeatherAlert } from '@/services/weatherIndexService';
 
 export default defineComponent({
   name: 'HistorySettingsView',
+  components: {
+    WeatherIndexCard,
+    WeatherIndexAlerts
+  },
   setup() {
     const environmentalStore = useEnvironmentalStore();
     const cities = ref(['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Lille']);
     const isSaving = ref(false);
+
+    // Weather index state
+    const currentWeatherIndex = ref<WeatherIndex | null>(null);
+    const currentAlerts = ref<WeatherAlert[]>([]);
 
     // Settings state
     const settings = reactive({
@@ -194,6 +226,25 @@ export default defineComponent({
       }
     };
 
+    // Weather index event handlers
+    const onIndexUpdated = (index: WeatherIndex) => {
+      currentWeatherIndex.value = index;
+      console.log('Weather index updated:', index);
+    };
+
+    const onIndexError = (error: string) => {
+      console.error('Weather index error:', error);
+    };
+
+    const onAlertsUpdated = (alerts: WeatherAlert[]) => {
+      currentAlerts.value = alerts;
+      console.log('Weather alerts updated:', alerts);
+    };
+
+    const onAlertsError = (error: string) => {
+      console.error('Weather alerts error:', error);
+    };
+
     onMounted(() => {
       // Load initial data
     });
@@ -204,10 +255,16 @@ export default defineComponent({
       isSaving,
       historyFilter,
       historyData,
+      currentWeatherIndex,
+      currentAlerts,
       saveSettings,
       formatDate,
       viewDetails,
-      deleteRecord
+      deleteRecord,
+      onIndexUpdated,
+      onIndexError,
+      onAlertsUpdated,
+      onAlertsError
     };
   }
 });
