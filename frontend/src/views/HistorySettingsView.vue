@@ -96,60 +96,149 @@
       <!-- Section Historique -->
       <div class="col-md-8">
         <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0">Historique des mesures</h5>
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i class="fas fa-chart-line me-2"></i>
+              Analyse des tendances météo
+            </h5>
+            <div class="refresh-btn" @click="loadPredictions" :class="{ 'spinning': loadingPredictions }">
+              <i class="fas fa-sync-alt"></i>
+            </div>
           </div>
           <div class="card-body">
-            <!-- Filtres -->
-            <div class="row mb-4">
-              <div class="col-md-4">
-                <label class="form-label">Type de données</label>
-                <select class="form-select" v-model="historyFilter.dataType">
-                  <option value="all">Toutes les mesures</option>
-                  <option value="temperature">Température</option>
-                  <option value="humidity">Humidité</option>
-                  <option value="air_quality">Qualité de l'air</option>
-                </select>
+            <!-- Loading state -->
+            <div v-if="loadingPredictions" class="text-center py-4">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
               </div>
-              <div class="col-md-4">
-                <label class="form-label">Date début</label>
-                <input type="date" class="form-control" v-model="historyFilter.startDate">
+              <p class="mt-2">Analyse des données météo...</p>
+            </div>
+
+            <!-- Error state -->
+            <div v-if="errorPredictions" class="alert alert-danger">
+              {{ errorPredictions }}
+            </div>
+
+            <!-- Data analysis -->
+            <div v-if="!loadingPredictions && predictions.length > 0">
+              <!-- Statistiques globales -->
+              <div class="row mb-4">
+                <div class="col-md-3">
+                  <div class="stat-card bg-primary text-white p-3 rounded">
+                    <h6 class="mb-1">Régions analysées</h6>
+                    <h3 class="mb-0">{{ predictions.length }}</h3>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="stat-card bg-success text-white p-3 rounded">
+                    <h6 class="mb-1">Temp. moyenne</h6>
+                    <h3 class="mb-0">{{ averageTemperature.toFixed(1) }}°C</h3>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="stat-card bg-info text-white p-3 rounded">
+                    <h6 class="mb-1">Temp. max</h6>
+                    <h3 class="mb-0">{{ maxTemperature.toFixed(1) }}°C</h3>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="stat-card bg-warning text-white p-3 rounded">
+                    <h6 class="mb-1">Temp. min</h6>
+                    <h3 class="mb-0">{{ minTemperature.toFixed(1) }}°C</h3>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-4">
-                <label class="form-label">Date fin</label>
-                <input type="date" class="form-control" v-model="historyFilter.endDate">
+
+              <!-- Répartition par région -->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <h6 class="mb-3">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    Répartition par région
+                  </h6>
+                  <div class="region-stats">
+                    <div v-for="region in regionStats" :key="region.name" class="region-item d-flex justify-content-between align-items-center p-2 border-bottom">
+                      <div>
+                        <strong>{{ region.name }}</strong>
+                        <br>
+                        <small class="text-muted">{{ region.count }} prédiction(s)</small>
+                      </div>
+                      <div class="text-end">
+                        <div class="fw-bold">{{ region.avgTemp.toFixed(1) }}°C</div>
+                        <small class="text-muted">{{ region.minTemp.toFixed(1) }}°C - {{ region.maxTemp.toFixed(1) }}°C</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <h6 class="mb-3">
+                    <i class="fas fa-thermometer-half me-2"></i>
+                    Analyse des températures
+                  </h6>
+                  <div class="temperature-analysis">
+                    <div class="temp-range mb-2">
+                      <div class="d-flex justify-content-between">
+                        <span>Froid</span>
+                        <span>Chaud</span>
+                      </div>
+                      <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-info" :style="{ width: coldPercentage + '%' }"></div>
+                        <div class="progress-bar bg-warning" :style="{ width: moderatePercentage + '%' }"></div>
+                        <div class="progress-bar bg-danger" :style="{ width: hotPercentage + '%' }"></div>
+                      </div>
+                      <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">&lt; 15°C ({{ coldCount }})</small>
+                        <small class="text-muted">15-25°C ({{ moderateCount }})</small>
+                        <small class="text-muted">&gt; 25°C ({{ hotCount }})</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Détails des prédictions -->
+              <div class="row">
+                <div class="col-12">
+                  <h6 class="mb-3">
+                    <i class="fas fa-list me-2"></i>
+                    Détails des prédictions
+                  </h6>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Région</th>
+                          <th>Date de prédiction</th>
+                          <th>Température</th>
+                          <th>Statut</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="pred in predictions" :key="pred.region_id">
+                          <td>
+                            <strong>{{ pred.region.name }}</strong>
+                          </td>
+                          <td>{{ formatPredictionDate(pred.time) }}</td>
+                          <td>
+                            <span class="badge" :class="getTemperatureBadgeClass(pred.temperature)">
+                              {{ pred.temperature.toFixed(1) }}°C
+                            </span>
+                          </td>
+                          <td>
+                            <span class="badge bg-secondary">{{ getTemperatureStatus(pred.temperature) }}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <!-- Tableau des données -->
-            <div class="table-responsive">
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Valeur</th>
-                    <th>Localisation</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="item in historyData" :key="item.id">
-                    <td>{{ formatDate(item.timestamp) }}</td>
-                    <td>{{ item.type }}</td>
-                    <td>{{ item.value }} {{ item.unit }}</td>
-                    <td>{{ item.location }}</td>
-                    <td>
-                      <button class="btn btn-sm btn-info me-1" @click="viewDetails(item)">
-                        <i class="bi bi-eye"></i>
-                      </button>
-                      <button class="btn btn-sm btn-danger" @click="deleteRecord(item.id)">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- No data state -->
+            <div v-if="!loadingPredictions && predictions.length === 0" class="text-center py-4">
+              <i class="fas fa-cloud-slash fa-3x text-muted mb-3"></i>
+              <p class="text-muted">Aucune donnée de prédiction disponible</p>
             </div>
           </div>
         </div>
@@ -159,7 +248,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, reactive, onMounted } from 'vue';
+import { defineComponent, ref, reactive, onMounted, computed } from 'vue';
 import { useEnvironmentalStore } from '../store/environmental';
 import WeatherIndexCard from '@/components/weather/WeatherIndexCard.vue';
 import WeatherIndexAlerts from '@/components/weather/WeatherIndexAlerts.vue';
@@ -258,6 +347,71 @@ export default defineComponent({
       }
     };
 
+    // Computed properties pour les statistiques
+    const averageTemperature = computed(() => {
+      if (predictions.value.length === 0) return 0;
+      const sum = predictions.value.reduce((acc, pred) => acc + pred.temperature, 0);
+      return sum / predictions.value.length;
+    });
+
+    const maxTemperature = computed(() => {
+      if (predictions.value.length === 0) return 0;
+      return Math.max(...predictions.value.map(pred => pred.temperature));
+    });
+
+    const minTemperature = computed(() => {
+      if (predictions.value.length === 0) return 0;
+      return Math.min(...predictions.value.map(pred => pred.temperature));
+    });
+
+    const regionStats = computed(() => {
+      const stats: { [key: string]: { name: string; count: number; temps: number[] } } = {};
+      
+      predictions.value.forEach(pred => {
+        const regionName = pred.region.name;
+        if (!stats[regionName]) {
+          stats[regionName] = { name: regionName, count: 0, temps: [] };
+        }
+        stats[regionName].count++;
+        stats[regionName].temps.push(pred.temperature);
+      });
+
+      return Object.values(stats).map(region => ({
+        name: region.name,
+        count: region.count,
+        avgTemp: region.temps.reduce((a, b) => a + b, 0) / region.temps.length,
+        minTemp: Math.min(...region.temps),
+        maxTemp: Math.max(...region.temps)
+      }));
+    });
+
+    const coldCount = computed(() => {
+      return predictions.value.filter(pred => pred.temperature < 15).length;
+    });
+
+    const moderateCount = computed(() => {
+      return predictions.value.filter(pred => pred.temperature >= 15 && pred.temperature <= 25).length;
+    });
+
+    const hotCount = computed(() => {
+      return predictions.value.filter(pred => pred.temperature > 25).length;
+    });
+
+    const coldPercentage = computed(() => {
+      if (predictions.value.length === 0) return 0;
+      return (coldCount.value / predictions.value.length) * 100;
+    });
+
+    const moderatePercentage = computed(() => {
+      if (predictions.value.length === 0) return 0;
+      return (moderateCount.value / predictions.value.length) * 100;
+    });
+
+    const hotPercentage = computed(() => {
+      if (predictions.value.length === 0) return 0;
+      return (hotCount.value / predictions.value.length) * 100;
+    });
+
     // Methods
     const saveSettings = async () => {
       isSaving.value = true;
@@ -272,6 +426,28 @@ export default defineComponent({
 
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleString();
+    };
+
+    const formatPredictionDate = (dateString: string) => {
+      return new Date(dateString).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    const getTemperatureBadgeClass = (temp: number) => {
+      if (temp < 15) return 'bg-info';
+      if (temp <= 25) return 'bg-warning';
+      return 'bg-danger';
+    };
+
+    const getTemperatureStatus = (temp: number) => {
+      if (temp < 15) return 'Froid';
+      if (temp <= 25) return 'Modéré';
+      return 'Chaud';
     };
 
     const viewDetails = (item: any) => {
@@ -318,6 +494,9 @@ export default defineComponent({
       currentAlerts,
       saveSettings,
       formatDate,
+      formatPredictionDate,
+      getTemperatureBadgeClass,
+      getTemperatureStatus,
       viewDetails,
       deleteRecord,
       onIndexUpdated,
@@ -332,7 +511,18 @@ export default defineComponent({
       errorConfig,
       loadPredictions,
       loadConfig,
-      saveConfig
+      saveConfig,
+      // Computed properties
+      averageTemperature,
+      maxTemperature,
+      minTemperature,
+      regionStats,
+      coldCount,
+      moderateCount,
+      hotCount,
+      coldPercentage,
+      moderatePercentage,
+      hotPercentage
     };
   }
 });
@@ -341,5 +531,54 @@ export default defineComponent({
 <style scoped>
 .history-settings {
   padding: 20px 0;
+}
+
+.refresh-btn {
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.refresh-btn.spinning i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.stat-card {
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.region-item {
+  transition: background-color 0.2s ease;
+}
+
+.region-item:hover {
+  background-color: #f8f9fa;
+}
+
+.temperature-analysis .progress {
+  border-radius: 10px;
+}
+
+.temperature-analysis .progress-bar {
+  transition: width 0.3s ease;
+}
+
+.badge {
+  font-size: 0.8em;
+  padding: 0.4em 0.6em;
 }
 </style>
