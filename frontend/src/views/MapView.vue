@@ -27,10 +27,10 @@
             </div>
             <div class="col-md-4">
               <div class="mb-3">
-                <label for="city" class="form-label">Région</label>
-                <select v-model="filters.city" class="form-select" id="city">
+                <label for="region" class="form-label">Région</label>
+                <select v-model="filters.region" class="form-select" id="region">
                   <option value="all">Toutes</option>
-                  <option v-for="city in cities" :key="city.id" :value="city.name">{{ city.name }}</option>
+                  <option v-for="prediction in predictions" :key="prediction.region.id" :value="prediction.region.name">{{ prediction.region.name }}</option>
                 </select>
               </div>
             </div>
@@ -66,9 +66,17 @@
             </div>
           </div>
           
-          <div id="map" class="map-container" ref="mapContainer"></div>
+          <!-- Loading state -->
+          <div v-if="loading" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Chargement...</span>
+            </div>
+            <p class="mt-2">Chargement des données météo...</p>
+          </div>
           
-          <div class="map-legend">
+          <div id="map" class="map-container" ref="mapContainer" v-show="!loading"></div>
+          
+          <div class="map-legend" v-show="!loading">
             <h6>Légende</h6>
             <div class="legend-item">
               <span class="legend-color" style="background-color: #28a745;"></span>
@@ -95,21 +103,21 @@
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" v-if="selectedRegion">
-              <h5>{{ selectedRegion.region }}</h5>
-              <p><strong>Date:</strong> {{ formatDate(selectedRegion.date) }}</p>
+              <h5>{{ selectedRegion.region.name }}</h5>
+              <p><strong>Date:</strong> {{ formatPredictionDate(selectedRegion.time) }}</p>
               <div class="mb-3">
                 <div class="sensor-value-item">
-                  <span class="badge" :class="getQualityClass(selectedRegion.temperature)">Température: {{ selectedRegion.temperature }}°C</span>
-                  <span class="sensor-description">{{ getQualityLabel(selectedRegion.temperature) }}</span>
+                  <span class="badge" :class="getTemperatureBadgeClass(selectedRegion.temperature)">Température: {{ selectedRegion.temperature.toFixed(1) }}°C</span>
+                  <span class="sensor-description">{{ getTemperatureStatus(selectedRegion.temperature) }}</span>
                 </div>
                 <div class="sensor-value-item">
-                  <span class="badge bg-primary">Humidité: {{ selectedRegion.humidity }}%</span>
+                  <span class="badge bg-primary">Humidité: {{ selectedRegion.humidity.toFixed(1) }}%</span>
                 </div>
                 <div class="sensor-value-item">
-                  <span class="badge bg-info text-dark">Pression: {{ selectedRegion.pressure }} hPa</span>
+                  <span class="badge bg-info text-dark">Pression: {{ selectedRegion.pressure.toFixed(1) }} hPa</span>
                 </div>
               </div>
-              <p class="text-muted">Dernière mise à jour: {{ formatDate(selectedRegion.date) }}</p>
+              <p class="text-muted">Dernière mise à jour: {{ formatPredictionDate(selectedRegion.time) }}</p>
               
               <h6>Indice météorologique</h6>
               <div class="weather-index-display">
@@ -134,9 +142,7 @@
   import { useRouter } from 'vue-router';
   import 'leaflet/dist/leaflet.css';
   import * as L from 'leaflet';
-  import environmentalApiService from '@/services/environmentalApiService';
-  import predictionService from '@/services/predictionService';
-  import weatherIndexService from '@/services/weatherIndexService';
+  import { predictionService } from '@/services/api.service';
   
   // Corriger le problème d'icône de marqueur de Leaflet
   delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -146,20 +152,9 @@
     shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
   });
   
-  interface RegionData {
-    region: string;
-    date: string;
-    temperature: number;
-    humidity: number;
-    pressure: number;
-    weatherIndex: number;
-    latitude: number;
-    longitude: number;
-  }
-  
   interface Filters {
     dataType: string;
-    city: string;
+    region: string;
     quality: string;
   }
   
@@ -171,15 +166,14 @@
       const modalRef = ref<HTMLElement | null>(null);
       const map = ref<L.Map | null>(null);
       const markers = ref<L.Marker[]>([]);
-      const selectedRegion = ref<RegionData | null>(null);
+      const selectedRegion = ref<any>(null);
       const searchQuery = ref('');
       const filters = reactive<Filters>({
         dataType: 'all',
-        city: 'all',
+        region: 'all',
         quality: 'all'
       });
-      const cities = ref<{ id: string; name: string; latitude: number; longitude: number }[]>([]);
-      const regionsData = ref<RegionData[]>([]);
+      const predictions = ref<any[]>([]);
       const loading = ref(false);
       
       // Méthode pour obtenir la couleur en fonction de la valeur
@@ -218,52 +212,30 @@
       };
       
       // Méthode pour formater la date
-      const formatDate = (dateString: string): string => {
-        const date = new Date(dateString);
-        return date.toLocaleString();
+      const formatPredictionDate = (dateString: string): string => {
+        return new Date(dateString).toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       };
-      
-      // Charger les données des régions
-      const loadRegionsData = async () => {
-        loading.value = true;
-        try {
-          // Charger les prédictions
-          const predictionsResponse = await predictionService.getPredictions();
-          const predictions = predictionsResponse.data;
-          
-          // Charger l'indice météorologique actuel
-          const weatherIndexResponse = await weatherIndexService.getCurrentIndex();
-          const weatherIndex = weatherIndexResponse.data;
-          
-          // Transformer les données
-          regionsData.value = predictions.map((prediction: any) => {
-            // Calculer un indice basé sur les métriques
-            const tempScore = Math.min(100, Math.max(0, (prediction.temperature - 10) * 5));
-            const humidityScore = Math.min(100, Math.max(0, Math.abs(prediction.humidity - 50) * 2));
-            const pressureScore = Math.min(100, Math.max(0, Math.abs(prediction.pressure - 1013) * 0.5));
-            
-            const calculatedIndex = Math.round((tempScore * 0.4 + humidityScore * 0.35 + pressureScore * 0.25));
-            
-            return {
-              region: prediction.region,
-              date: prediction.date,
-              temperature: prediction.temperature,
-              humidity: prediction.humidity,
-              pressure: prediction.pressure,
-              weatherIndex: calculatedIndex,
-              latitude: getRegionCoordinates(prediction.region).lat,
-              longitude: getRegionCoordinates(prediction.region).lng
-            };
-          });
-        } catch (error) {
-          console.error('Erreur lors du chargement des données:', error);
-        } finally {
-          loading.value = false;
-        }
+
+      const getTemperatureBadgeClass = (temp: number) => {
+        if (temp < 15) return 'bg-info';
+        if (temp <= 25) return 'bg-warning';
+        return 'bg-danger';
+      };
+
+      const getTemperatureStatus = (temp: number) => {
+        if (temp < 15) return 'Froid';
+        if (temp <= 25) return 'Modéré';
+        return 'Chaud';
       };
       
       // Obtenir les coordonnées d'une région
-      const getRegionCoordinates = (region: string): { lat: number; lng: number } => {
+      const getRegionCoordinates = (regionName: string): { lat: number; lng: number } => {
         const coordinates: { [key: string]: { lat: number; lng: number } } = {
           'Paris': { lat: 48.856614, lng: 2.352222 },
           'Lyon': { lat: 45.764043, lng: 4.835659 },
@@ -277,7 +249,33 @@
           'Nice': { lat: 43.710173, lng: 7.261953 }
         };
         
-        return coordinates[region] || { lat: 46.603354, lng: 1.888334 }; // Centre de la France par défaut
+        return coordinates[regionName] || { lat: 46.603354, lng: 1.888334 }; // Centre de la France par défaut
+      };
+      
+      // Charger les données des prédictions
+      const loadPredictionsData = async () => {
+        loading.value = true;
+        try {
+          const response = await predictionService.getPredictions();
+          predictions.value = response.data.map((prediction: any) => {
+            // Calculer un indice basé sur les métriques (même logique que dans HistorySettingsView)
+            const tempScore = Math.min(100, Math.max(0, (prediction.temperature - 10) * 5));
+            const humidityScore = Math.min(100, Math.max(0, Math.abs(prediction.humidity - 50) * 2));
+            const pressureScore = Math.min(100, Math.max(0, Math.abs(prediction.pressure - 1013) * 0.5));
+            
+            const calculatedIndex = Math.round((tempScore * 0.4 + humidityScore * 0.35 + pressureScore * 0.25));
+            
+            return {
+              ...prediction,
+              weatherIndex: calculatedIndex,
+              coordinates: getRegionCoordinates(prediction.region.name)
+            };
+          });
+        } catch (error) {
+          console.error('Erreur lors du chargement des données:', error);
+        } finally {
+          loading.value = false;
+        }
       };
       
       // Initialiser la carte
@@ -304,41 +302,41 @@
         markers.value.forEach(marker => marker.remove());
         markers.value = [];
         
-        // Filtrer les régions
-        const filteredRegions = regionsData.value.filter(region => {
-          if (filters.city !== 'all' && region.region !== filters.city) return false;
+        // Filtrer les prédictions
+        const filteredPredictions = predictions.value.filter(prediction => {
+          if (filters.region !== 'all' && prediction.region.name !== filters.region) return false;
           
           if (filters.quality !== 'all') {
-            if (filters.quality === 'low' && region.weatherIndex > 30) return false;
-            if (filters.quality === 'moderate' && (region.weatherIndex <= 30 || region.weatherIndex > 60)) return false;
-            if (filters.quality === 'high' && region.weatherIndex <= 60) return false;
+            if (filters.quality === 'low' && prediction.weatherIndex > 30) return false;
+            if (filters.quality === 'moderate' && (prediction.weatherIndex <= 30 || prediction.weatherIndex > 60)) return false;
+            if (filters.quality === 'high' && prediction.weatherIndex <= 60) return false;
           }
           
           return true;
         });
         
         // Ajouter les nouveaux marqueurs
-        filteredRegions.forEach(region => {
+        filteredPredictions.forEach(prediction => {
           const markerIcon = L.divIcon({
             className: 'custom-marker',
-            html: `<div style="background-color: ${getQualityColor(region.weatherIndex)}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">${Math.round(region.weatherIndex)}</div>`,
+            html: `<div style="background-color: ${getQualityColor(prediction.weatherIndex)}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">${Math.round(prediction.weatherIndex)}</div>`,
             iconSize: [20, 20],
             iconAnchor: [10, 10]
           });
           
-          const marker = L.marker([region.latitude, region.longitude], { icon: markerIcon }).addTo(map.value!);
+          const marker = L.marker([prediction.coordinates.lat, prediction.coordinates.lng], { icon: markerIcon }).addTo(map.value!);
           
           // Popup et événements
-          marker.bindTooltip(`${region.region}: ${region.weatherIndex} (${getIndexLabel(region.weatherIndex)})`);
-          marker.on('click', () => showRegionDetail(region));
+          marker.bindTooltip(`${prediction.region.name}: ${prediction.weatherIndex} (${getIndexLabel(prediction.weatherIndex)})`);
+          marker.on('click', () => showRegionDetail(prediction));
           
           markers.value.push(marker);
         });
       };
       
       // Afficher les détails d'une région
-      const showRegionDetail = (region: RegionData) => {
-        selectedRegion.value = region;
+      const showRegionDetail = (prediction: any) => {
+        selectedRegion.value = prediction;
         
         // Utiliser Bootstrap pour afficher la modal
         if (modalRef.value) {
@@ -351,13 +349,13 @@
       const searchLocation = () => {
         if (!searchQuery.value || !map.value) return;
         
-        const region = regionsData.value.find(r => 
-          r.region.toLowerCase().includes(searchQuery.value.toLowerCase())
+        const prediction = predictions.value.find(p => 
+          p.region.name.toLowerCase().includes(searchQuery.value.toLowerCase())
         );
         
-        if (region) {
-          map.value.setView([region.latitude, region.longitude], 12);
-          showRegionDetail(region);
+        if (prediction) {
+          map.value.setView([prediction.coordinates.lat, prediction.coordinates.lng], 12);
+          showRegionDetail(prediction);
         } else {
           alert(`Aucun résultat trouvé pour "${searchQuery.value}"`);
         }
@@ -365,7 +363,7 @@
       
       // Méthode pour actualiser la carte
       const refreshMap = async () => {
-        await loadRegionsData();
+        await loadPredictionsData();
         addMarkers();
       };
       
@@ -376,7 +374,7 @@
         // Rediriger vers la page d'historique avec la région
         router.push({
           name: 'history',
-          query: { region: selectedRegion.value.region }
+          query: { region: selectedRegion.value.region.name }
         });
       };
       
@@ -387,14 +385,6 @@
       
       // Initialiser la carte après le montage du composant
       onMounted(async () => {
-        try {
-          console.log('Appel /api/regions/ depuis MapView');
-          const response = await environmentalApiService.getAvailableCities();
-          cities.value = response.data;
-        } catch (e) {
-          cities.value = [];
-        }
-        
         // Charger Bootstrap pour les modals
         const bootstrapScript = document.createElement('script');
         bootstrapScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js';
@@ -407,7 +397,7 @@
         document.head.appendChild(bootstrapIconsLink);
         
         // Charger les données et initialiser la carte
-        await loadRegionsData();
+        await loadPredictionsData();
         setTimeout(() => {
           initMap();
         }, 100);
@@ -426,14 +416,16 @@
         selectedRegion,
         searchQuery,
         filters,
-        cities,
+        predictions,
         loading,
         getQualityColor,
         getQualityClass,
         getQualityLabel,
         getIndexClass,
         getIndexLabel,
-        formatDate,
+        formatPredictionDate,
+        getTemperatureBadgeClass,
+        getTemperatureStatus,
         searchLocation,
         refreshMap,
         viewRegionHistory
