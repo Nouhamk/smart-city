@@ -19,15 +19,15 @@
                 <label for="dataType" class="form-label">Type de données</label>
                 <select v-model="filters.dataType" class="form-select" id="dataType">
                   <option value="all">Tous</option>
-                  <option value="airQuality">Qualité de l'air</option>
                   <option value="temperature">Température</option>
                   <option value="humidity">Humidité</option>
+                  <option value="pressure">Pression</option>
                 </select>
               </div>
             </div>
             <div class="col-md-4">
               <div class="mb-3">
-                <label for="city" class="form-label">Ville</label>
+                <label for="city" class="form-label">Région</label>
                 <select v-model="filters.city" class="form-select" id="city">
                   <option value="all">Toutes</option>
                   <option v-for="city in cities" :key="city.id" :value="city.name">{{ city.name }}</option>
@@ -36,12 +36,12 @@
             </div>
             <div class="col-md-4">
               <div class="mb-3">
-                <label for="quality" class="form-label">Qualité</label>
+                <label for="quality" class="form-label">Niveau</label>
                 <select v-model="filters.quality" class="form-select" id="quality">
                   <option value="all">Tous</option>
-                  <option value="good">Bonne</option>
-                  <option value="moderate">Moyenne</option>
-                  <option value="poor">Mauvaise</option>
+                  <option value="low">Faible</option>
+                  <option value="moderate">Modéré</option>
+                  <option value="high">Élevé</option>
                 </select>
               </div>
             </div>
@@ -56,7 +56,7 @@
               <input 
                 type="text" 
                 class="form-control" 
-                placeholder="Rechercher un lieu" 
+                placeholder="Rechercher une région" 
                 v-model="searchQuery"
                 @keyup.enter="searchLocation"
               >
@@ -72,51 +72,56 @@
             <h6>Légende</h6>
             <div class="legend-item">
               <span class="legend-color" style="background-color: #28a745;"></span>
-              <span>Bon (0-50)</span>
+              <span>Faible (0-30)</span>
             </div>
             <div class="legend-item">
               <span class="legend-color" style="background-color: #ffc107;"></span>
-              <span>Moyen (51-75)</span>
+              <span>Modéré (31-60)</span>
             </div>
             <div class="legend-item">
               <span class="legend-color" style="background-color: #dc3545;"></span>
-              <span>Mauvais (76+)</span>
+              <span>Élevé (61-100)</span>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Modal pour les détails du capteur -->
-      <div class="modal fade" id="sensorDetailModal" tabindex="-1" aria-labelledby="sensorDetailModalLabel" aria-hidden="true" ref="modalRef">
+      <!-- Modal pour les détails de la région -->
+      <div class="modal fade" id="regionDetailModal" tabindex="-1" aria-labelledby="regionDetailModalLabel" aria-hidden="true" ref="modalRef">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title" id="sensorDetailModalLabel">Détails du capteur</h5>
+              <h5 class="modal-title" id="regionDetailModalLabel">Détails de la région</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" v-if="selectedSensor">
-              <h5>{{ selectedSensor.name }}</h5>
-              <p><strong>Emplacement:</strong> {{ selectedSensor.location }}</p>
+            <div class="modal-body" v-if="selectedRegion">
+              <h5>{{ selectedRegion.region }}</h5>
+              <p><strong>Date:</strong> {{ formatDate(selectedRegion.date) }}</p>
               <div class="mb-3">
                 <div class="sensor-value-item">
-                  <span class="badge" :class="getQualityClass(selectedSensor.airQuality)">Qualité de l'air: {{ selectedSensor.airQuality }}</span>
-                  <span class="sensor-description">{{ getQualityLabel(selectedSensor.airQuality) }}</span>
+                  <span class="badge" :class="getQualityClass(selectedRegion.temperature)">Température: {{ selectedRegion.temperature }}°C</span>
+                  <span class="sensor-description">{{ getQualityLabel(selectedRegion.temperature) }}</span>
                 </div>
                 <div class="sensor-value-item">
-                  <span class="badge bg-primary">Température: {{ selectedSensor.temperature }}°C</span>
+                  <span class="badge bg-primary">Humidité: {{ selectedRegion.humidity }}%</span>
                 </div>
                 <div class="sensor-value-item">
-                  <span class="badge bg-info text-dark">Humidité: {{ selectedSensor.humidity }}%</span>
+                  <span class="badge bg-info text-dark">Pression: {{ selectedRegion.pressure }} hPa</span>
                 </div>
               </div>
-              <p class="text-muted">Dernière mise à jour: {{ formatDate(selectedSensor.lastUpdated) }}</p>
+              <p class="text-muted">Dernière mise à jour: {{ formatDate(selectedRegion.date) }}</p>
               
-              <h6>Tendance sur 24h</h6>
-              <div class="mini-chart" ref="miniChartRef"></div>
+              <h6>Indice météorologique</h6>
+              <div class="weather-index-display">
+                <div class="index-value" :class="getIndexClass(selectedRegion.weatherIndex)">
+                  {{ selectedRegion.weatherIndex }}
+                </div>
+                <div class="index-label">{{ getIndexLabel(selectedRegion.weatherIndex) }}</div>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-              <button type="button" class="btn btn-primary" @click="viewSensorHistory">Voir l'historique</button>
+              <button type="button" class="btn btn-primary" @click="viewRegionHistory">Voir l'historique</button>
             </div>
           </div>
         </div>
@@ -129,8 +134,9 @@
   import { useRouter } from 'vue-router';
   import 'leaflet/dist/leaflet.css';
   import * as L from 'leaflet';
-  import * as Chart from 'chart.js';
   import environmentalApiService from '@/services/environmentalApiService';
+  import predictionService from '@/services/predictionService';
+  import weatherIndexService from '@/services/weatherIndexService';
   
   // Corriger le problème d'icône de marqueur de Leaflet
   delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -140,20 +146,15 @@
     shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
   });
   
-  interface Sensor {
-    id: number;
-    name: string;
-    location: string;
-    latitude: number;
-    longitude: number;
-    airQuality: number;
+  interface RegionData {
+    region: string;
+    date: string;
     temperature: number;
     humidity: number;
-    lastUpdated: string;
-    historicalData?: {
-      timestamps: string[];
-      values: number[];
-    };
+    pressure: number;
+    weatherIndex: number;
+    latitude: number;
+    longitude: number;
   }
   
   interface Filters {
@@ -162,95 +163,15 @@
     quality: string;
   }
   
-  // Données simulées pour les capteurs
-  const mockSensors: Sensor[] = [
-    {
-      id: 1,
-      name: 'Capteur Paris Centre',
-      location: 'Paris, Île-de-France',
-      latitude: 48.856614,
-      longitude: 2.352222,
-      airQuality: 42,
-      temperature: 22,
-      humidity: 65,
-      lastUpdated: '2023-01-10T10:30:00',
-      historicalData: {
-        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
-        values: [45, 40, 42, 38, 42]
-      }
-    },
-    {
-      id: 2,
-      name: 'Capteur Lyon Centre',
-      location: 'Lyon, Auvergne-Rhône-Alpes',
-      latitude: 45.764043,
-      longitude: 4.835659,
-      airQuality: 65,
-      temperature: 24,
-      humidity: 60,
-      lastUpdated: '2023-01-10T10:35:00',
-      historicalData: {
-        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
-        values: [60, 58, 65, 68, 65]
-      }
-    },
-    {
-      id: 3,
-      name: 'Capteur Marseille Port',
-      location: 'Marseille, Provence-Alpes-Côte d\'Azur',
-      latitude: 43.296482,
-      longitude: 5.369780,
-      airQuality: 85,
-      temperature: 26,
-      humidity: 55,
-      lastUpdated: '2023-01-10T10:40:00',
-      historicalData: {
-        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
-        values: [75, 80, 85, 90, 85]
-      }
-    },
-    {
-      id: 4,
-      name: 'Capteur Bordeaux Centre',
-      location: 'Bordeaux, Nouvelle-Aquitaine',
-      latitude: 44.837789,
-      longitude: -0.579180,
-      airQuality: 48,
-      temperature: 20,
-      humidity: 70,
-      lastUpdated: '2023-01-10T10:45:00',
-      historicalData: {
-        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
-        values: [50, 52, 48, 47, 48]
-      }
-    },
-    {
-      id: 5,
-      name: 'Capteur Lille Centre',
-      location: 'Lille, Hauts-de-France',
-      latitude: 50.629250,
-      longitude: 3.057256,
-      airQuality: 55,
-      temperature: 18,
-      humidity: 75,
-      lastUpdated: '2023-01-10T10:50:00',
-      historicalData: {
-        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
-        values: [52, 54, 55, 56, 55]
-      }
-    }
-  ];
-  
   export default defineComponent({
     name: 'MapView',
     setup() {
       const router = useRouter();
       const mapContainer = ref<HTMLElement | null>(null);
-      const miniChartRef = ref<HTMLElement | null>(null);
       const modalRef = ref<HTMLElement | null>(null);
       const map = ref<L.Map | null>(null);
       const markers = ref<L.Marker[]>([]);
-      const selectedSensor = ref<Sensor | null>(null);
+      const selectedRegion = ref<RegionData | null>(null);
       const searchQuery = ref('');
       const filters = reactive<Filters>({
         dataType: 'all',
@@ -258,33 +179,105 @@
         quality: 'all'
       });
       const cities = ref<{ id: string; name: string; latitude: number; longitude: number }[]>([]);
-      let miniChart: Chart.Chart | null = null;
+      const regionsData = ref<RegionData[]>([]);
+      const loading = ref(false);
       
-      // Méthode pour obtenir la couleur en fonction de la qualité de l'air
+      // Méthode pour obtenir la couleur en fonction de la valeur
       const getQualityColor = (value: number): string => {
-        if (value <= 50) return '#28a745'; // Vert (bon)
-        if (value <= 75) return '#ffc107'; // Jaune (moyen)
-        return '#dc3545'; // Rouge (mauvais)
+        if (value <= 30) return '#28a745'; // Vert (faible)
+        if (value <= 60) return '#ffc107'; // Jaune (modéré)
+        return '#dc3545'; // Rouge (élevé)
       };
       
-      // Méthode pour obtenir la classe CSS en fonction de la qualité de l'air
+      // Méthode pour obtenir la classe CSS en fonction de la valeur
       const getQualityClass = (value: number): string => {
-        if (value <= 50) return 'bg-success';
-        if (value <= 75) return 'bg-warning text-dark';
+        if (value <= 30) return 'bg-success';
+        if (value <= 60) return 'bg-warning text-dark';
         return 'bg-danger';
       };
       
-      // Méthode pour obtenir le label en fonction de la qualité de l'air
+      // Méthode pour obtenir le label en fonction de la valeur
       const getQualityLabel = (value: number): string => {
-        if (value <= 50) return 'Bonne qualité';
-        if (value <= 75) return 'Qualité moyenne';
-        return 'Mauvaise qualité';
+        if (value <= 30) return 'Faible';
+        if (value <= 60) return 'Modéré';
+        return 'Élevé';
+      };
+      
+      // Méthode pour obtenir la classe de l'indice météorologique
+      const getIndexClass = (index: number): string => {
+        if (index <= 30) return 'index-low';
+        if (index <= 60) return 'index-moderate';
+        return 'index-high';
+      };
+      
+      // Méthode pour obtenir le label de l'indice météorologique
+      const getIndexLabel = (index: number): string => {
+        if (index <= 30) return 'Conditions normales';
+        if (index <= 60) return 'Conditions modérées';
+        return 'Conditions critiques';
       };
       
       // Méthode pour formater la date
       const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
         return date.toLocaleString();
+      };
+      
+      // Charger les données des régions
+      const loadRegionsData = async () => {
+        loading.value = true;
+        try {
+          // Charger les prédictions
+          const predictionsResponse = await predictionService.getPredictions();
+          const predictions = predictionsResponse.data;
+          
+          // Charger l'indice météorologique actuel
+          const weatherIndexResponse = await weatherIndexService.getCurrentIndex();
+          const weatherIndex = weatherIndexResponse.data;
+          
+          // Transformer les données
+          regionsData.value = predictions.map((prediction: any) => {
+            // Calculer un indice basé sur les métriques
+            const tempScore = Math.min(100, Math.max(0, (prediction.temperature - 10) * 5));
+            const humidityScore = Math.min(100, Math.max(0, Math.abs(prediction.humidity - 50) * 2));
+            const pressureScore = Math.min(100, Math.max(0, Math.abs(prediction.pressure - 1013) * 0.5));
+            
+            const calculatedIndex = Math.round((tempScore * 0.4 + humidityScore * 0.35 + pressureScore * 0.25));
+            
+            return {
+              region: prediction.region,
+              date: prediction.date,
+              temperature: prediction.temperature,
+              humidity: prediction.humidity,
+              pressure: prediction.pressure,
+              weatherIndex: calculatedIndex,
+              latitude: getRegionCoordinates(prediction.region).lat,
+              longitude: getRegionCoordinates(prediction.region).lng
+            };
+          });
+        } catch (error) {
+          console.error('Erreur lors du chargement des données:', error);
+        } finally {
+          loading.value = false;
+        }
+      };
+      
+      // Obtenir les coordonnées d'une région
+      const getRegionCoordinates = (region: string): { lat: number; lng: number } => {
+        const coordinates: { [key: string]: { lat: number; lng: number } } = {
+          'Paris': { lat: 48.856614, lng: 2.352222 },
+          'Lyon': { lat: 45.764043, lng: 4.835659 },
+          'Marseille': { lat: 43.296482, lng: 5.369780 },
+          'Bordeaux': { lat: 44.837789, lng: -0.579180 },
+          'Lille': { lat: 50.629250, lng: 3.057256 },
+          'Toulouse': { lat: 43.604652, lng: 1.444209 },
+          'Nantes': { lat: 47.218371, lng: -1.553621 },
+          'Strasbourg': { lat: 48.573405, lng: 7.752111 },
+          'Montpellier': { lat: 43.610769, lng: 3.876716 },
+          'Nice': { lat: 43.710173, lng: 7.261953 }
+        };
+        
+        return coordinates[region] || { lat: 46.603354, lng: 1.888334 }; // Centre de la France par défaut
       };
       
       // Initialiser la carte
@@ -311,131 +304,79 @@
         markers.value.forEach(marker => marker.remove());
         markers.value = [];
         
-        // Filtrer les capteurs
-        const filteredSensors = mockSensors.filter(sensor => {
-          if (filters.city !== 'all' && !sensor.location.includes(filters.city)) return false;
+        // Filtrer les régions
+        const filteredRegions = regionsData.value.filter(region => {
+          if (filters.city !== 'all' && region.region !== filters.city) return false;
           
           if (filters.quality !== 'all') {
-            if (filters.quality === 'good' && sensor.airQuality > 50) return false;
-            if (filters.quality === 'moderate' && (sensor.airQuality <= 50 || sensor.airQuality > 75)) return false;
-            if (filters.quality === 'poor' && sensor.airQuality <= 75) return false;
+            if (filters.quality === 'low' && region.weatherIndex > 30) return false;
+            if (filters.quality === 'moderate' && (region.weatherIndex <= 30 || region.weatherIndex > 60)) return false;
+            if (filters.quality === 'high' && region.weatherIndex <= 60) return false;
           }
           
           return true;
         });
         
         // Ajouter les nouveaux marqueurs
-        filteredSensors.forEach(sensor => {
+        filteredRegions.forEach(region => {
           const markerIcon = L.divIcon({
             className: 'custom-marker',
-            html: `<div style="background-color: ${getQualityColor(sensor.airQuality)}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
+            html: `<div style="background-color: ${getQualityColor(region.weatherIndex)}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">${Math.round(region.weatherIndex)}</div>`,
             iconSize: [20, 20],
             iconAnchor: [10, 10]
           });
           
-          const marker = L.marker([sensor.latitude, sensor.longitude], { icon: markerIcon }).addTo(map.value!);
+          const marker = L.marker([region.latitude, region.longitude], { icon: markerIcon }).addTo(map.value!);
           
           // Popup et événements
-          marker.bindTooltip(`${sensor.name}: ${sensor.airQuality} (${getQualityLabel(sensor.airQuality)})`);
-          marker.on('click', () => showSensorDetail(sensor));
+          marker.bindTooltip(`${region.region}: ${region.weatherIndex} (${getIndexLabel(region.weatherIndex)})`);
+          marker.on('click', () => showRegionDetail(region));
           
           markers.value.push(marker);
         });
       };
       
-      // Afficher les détails d'un capteur
-      const showSensorDetail = (sensor: Sensor) => {
-        selectedSensor.value = sensor;
+      // Afficher les détails d'une région
+      const showRegionDetail = (region: RegionData) => {
+        selectedRegion.value = region;
         
         // Utiliser Bootstrap pour afficher la modal
         if (modalRef.value) {
           const modal = new (window as any).bootstrap.Modal(modalRef.value);
           modal.show();
-          
-          // Dessiner le mini graphique après l'affichage de la modal
-          setTimeout(() => {
-            drawMiniChart();
-          }, 500);
         }
-      };
-      
-      // Dessiner le mini graphique
-      const drawMiniChart = () => {
-        if (!miniChartRef.value || !selectedSensor.value || !selectedSensor.value.historicalData) return;
-        
-        // Détruire le graphique existant
-        if (miniChart) {
-          miniChart.destroy();
-        }
-        
-        const ctx = miniChartRef.value.getContext('2d');
-        if (!ctx) return;
-        
-        const data = selectedSensor.value.historicalData;
-        
-        miniChart = new Chart.Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: data.timestamps,
-            datasets: [{
-              label: 'Qualité de l\'air',
-              data: data.values,
-              backgroundColor: 'rgba(54, 162, 235, 0.2)',
-              borderColor: 'rgba(54, 162, 235, 1)',
-              borderWidth: 2,
-              tension: 0.4
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-              legend: {
-                display: false
-              }
-            },
-            scales: {
-              y: {
-                beginAtZero: false
-              }
-            }
-          }
-        });
       };
       
       // Méthode pour rechercher un lieu
       const searchLocation = () => {
         if (!searchQuery.value || !map.value) return;
         
-        // Dans un environnement réel, vous utiliseriez un service de géocodage
-        // Pour cette démonstration, nous allons simplement chercher parmi les capteurs
-        const sensor = mockSensors.find(s => 
-          s.name.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
-          s.location.toLowerCase().includes(searchQuery.value.toLowerCase())
+        const region = regionsData.value.find(r => 
+          r.region.toLowerCase().includes(searchQuery.value.toLowerCase())
         );
         
-        if (sensor) {
-          map.value.setView([sensor.latitude, sensor.longitude], 12);
-          showSensorDetail(sensor);
+        if (region) {
+          map.value.setView([region.latitude, region.longitude], 12);
+          showRegionDetail(region);
         } else {
           alert(`Aucun résultat trouvé pour "${searchQuery.value}"`);
         }
       };
       
       // Méthode pour actualiser la carte
-      const refreshMap = () => {
-        // Dans un environnement réel, vous rechargeriez les données depuis l'API
+      const refreshMap = async () => {
+        await loadRegionsData();
         addMarkers();
       };
       
-      // Méthode pour voir l'historique complet d'un capteur
-      const viewSensorHistory = () => {
-        if (!selectedSensor.value) return;
+      // Méthode pour voir l'historique complet d'une région
+      const viewRegionHistory = () => {
+        if (!selectedRegion.value) return;
         
-        // Rediriger vers la page d'historique avec l'ID du capteur
+        // Rediriger vers la page d'historique avec la région
         router.push({
           name: 'history',
-          query: { sensor: selectedSensor.value.id.toString() }
+          query: { region: selectedRegion.value.region }
         });
       };
       
@@ -453,6 +394,7 @@
         } catch (e) {
           cities.value = [];
         }
+        
         // Charger Bootstrap pour les modals
         const bootstrapScript = document.createElement('script');
         bootstrapScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js';
@@ -464,7 +406,8 @@
         bootstrapIconsLink.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css';
         document.head.appendChild(bootstrapIconsLink);
         
-        // Initialiser la carte après un court délai
+        // Charger les données et initialiser la carte
+        await loadRegionsData();
         setTimeout(() => {
           initMap();
         }, 100);
@@ -479,19 +422,21 @@
       
       return {
         mapContainer,
-        miniChartRef,
         modalRef,
-        selectedSensor,
+        selectedRegion,
         searchQuery,
         filters,
         cities,
+        loading,
         getQualityColor,
         getQualityClass,
         getQualityLabel,
+        getIndexClass,
+        getIndexLabel,
         formatDate,
         searchLocation,
         refreshMap,
-        viewSensorHistory
+        viewRegionHistory
       };
     }
   });
@@ -543,9 +488,34 @@
     margin-left: 8px;
   }
   
-  .mini-chart {
-    height: 200px;
-    width: 100%;
+  .weather-index-display {
+    text-align: center;
+    padding: 20px;
+    border-radius: 8px;
+    background: #f8f9fa;
+  }
+  
+  .index-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  
+  .index-low {
+    color: #28a745;
+  }
+  
+  .index-moderate {
+    color: #ffc107;
+  }
+  
+  .index-high {
+    color: #dc3545;
+  }
+  
+  .index-label {
+    font-size: 1.1rem;
+    color: #6c757d;
   }
   
   /* Styles personnalisés pour les marqueurs */
