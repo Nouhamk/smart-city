@@ -1,0 +1,13 @@
+{
+  "critical_threshold": 85,
+  "high_threshold": 70,
+  "medium_threshold": 50,
+  "weights": {
+    "temperature": 0.25,
+    "humidity": 0.2,
+    "pressure": 0.15,
+    "precipitation": 0.2,
+    "wind_speed": 0.15,
+    "visibility": 0.05
+  }
+}

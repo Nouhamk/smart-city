@@ -26,22 +26,11 @@
     <div class="row">
       <!-- Section Paramètres -->
       <div class="col-md-4 mb-4">
-        <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0">Paramètres d'autorité</h5>
-          </div>
+        <div class="card mb-4">
           <div class="card-body">
-            <div v-if="loadingPredictions || loadingConfig" class="mb-3">
-              <span class="spinner-border spinner-border-sm me-2"></span> Chargement...
-            </div>
-            <div v-if="errorPredictions || errorConfig" class="alert alert-danger mb-3">
-              {{ errorPredictions || errorConfig }}
-            </div>
-
-            <!-- Affichage des métriques météo réelles -->
-            <div class="mb-3">
-              <label class="form-label">Métriques météo réelles</label>
-              <table class="table">
+            <h5 class="card-title">Paramètres d'autorité</h5>
+            <div class="table-responsive-authority">
+              <table class="table table-sm table-bordered mb-0">
                 <thead>
                   <tr>
                     <th>Région</th>
@@ -52,16 +41,18 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="pred in predictions" :key="pred.region_id">
-                    <td>{{ pred.region.name }}</td>
-                    <td>{{ pred.time }}</td>
-                    <td>{{ pred.temperature !== null ? pred.temperature.toFixed(1) + ' °C' : 'Non disponible' }}</td>
-                    <td>{{ pred.humidity !== null ? pred.humidity : 'Non disponible' }}</td>
-                    <td>{{ pred.pressure !== null ? pred.pressure : 'Non disponible' }}</td>
+                  <tr v-for="row in realMetrics" :key="row.region + row.date">
+                    <td>{{ row.region }}</td>
+                    <td>{{ row.date }}</td>
+                    <td>{{ row.temperature !== undefined ? row.temperature + ' °C' : 'Non disponible' }}</td>
+                    <td>{{ row.humidity !== undefined ? row.humidity + ' %' : 'Non disponible' }}</td>
+                    <td>{{ row.pressure !== undefined ? row.pressure + ' hPa' : 'Non disponible' }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
 
             <!-- Formulaire de config des seuils/poids -->
             <form @submit.prevent="saveConfig" v-if="weatherConfig">
@@ -90,8 +81,6 @@
               </button>
             </form>
           </div>
-        </div>
-      </div>
 
       <!-- Section Historique -->
       <div class="col-md-8">
@@ -522,7 +511,20 @@ export default defineComponent({
       hotCount,
       coldPercentage,
       moderatePercentage,
-      hotPercentage
+      hotPercentage,
+      realMetrics: computed(() => {
+        const metrics: { region: string; date: string; temperature: number | undefined; humidity: number | undefined; pressure: number | undefined }[] = [];
+        predictions.value.forEach(pred => {
+          metrics.push({
+            region: pred.region.name,
+            date: formatPredictionDate(pred.time),
+            temperature: pred.temperature,
+            humidity: pred.humidity,
+            pressure: pred.pressure
+          });
+        });
+        return metrics;
+      })
     };
   }
 });
@@ -580,5 +582,19 @@ export default defineComponent({
 .badge {
   font-size: 0.8em;
   padding: 0.4em 0.6em;
+}
+
+.table-responsive-authority {
+  width: 100%;
+  overflow-x: auto;
+}
+.table-responsive-authority table {
+  min-width: 600px;
+}
+@media (max-width: 600px) {
+  .table-responsive-authority table {
+    min-width: 400px;
+    font-size: 13px;
+  }
 }
 </style>
