@@ -30,7 +30,7 @@
             <label for="citySelect" class="form-label">Ville</label>
             <select id="citySelect" class="form-select" v-model="selectedCity">
               <option value="all">Toutes les villes</option>
-              <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
+              <option v-for="city in cities" :key="city.id" :value="city.name">{{ city.name }}</option>
             </select>
           </div>
         </div>
@@ -198,16 +198,16 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="city in cities" :key="city">
-                    <td>{{ city }}</td>
-                    <td>{{ formatValue(currentValues[city]) }} {{ metricConfig.unit }}</td>
-                    <td>{{ formatValue(averageValues[city]) }} {{ metricConfig.unit }}</td>
+                  <tr v-for="city in cities" :key="city.id">
+                    <td>{{ city.name }}</td>
+                    <td>{{ formatValue(currentValues[city.name]) }} {{ metricConfig.unit }}</td>
+                    <td>{{ formatValue(averageValues[city.name]) }} {{ metricConfig.unit }}</td>
                     <td>
                       <div class="d-flex align-items-center">
-                        <span :class="getTrendClass(getTrendValue(city))">
-                          {{ getTrendValue(city) > 0 ? '↑' : getTrendValue(city) < 0 ? '↓' : '→' }}
+                        <span :class="getTrendClass(getTrendValue(city.name))">
+                          {{ getTrendValue(city.name) > 0 ? '↑' : getTrendValue(city.name) < 0 ? '↓' : '→' }}
                         </span>
-                        <span class="ms-1">{{ formatValue(Math.abs(getTrendValue(city))) }} {{ metricConfig.unit }}</span>
+                        <span class="ms-1">{{ formatValue(Math.abs(getTrendValue(city.name))) }} {{ metricConfig.unit }}</span>
                       </div>
                     </td>
                   </tr>
@@ -224,6 +224,7 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted, watch, computed } from 'vue';
 import Chart from 'chart.js/auto';
+import environmentalApiService from '@/services/environmentalApiService';
 
 // Types
 interface MetricData {
@@ -264,7 +265,7 @@ export default defineComponent({
     // État
     const selectedMetric = ref('temp');
     const selectedCity = ref('all');
-    const cities = ref(['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Lille']);
+    const cities = ref<{ id: string; name: string; latitude: number; longitude: number }[]>([]);
     const metricData = ref<MetricData[]>([]);
     const currentValues = ref<Record<string, number>>({});
     const averageValues = ref<Record<string, number>>({});
@@ -470,7 +471,7 @@ export default defineComponent({
 
     // Charger les données
     const loadData = () => {
-      const allData = generateDataForMetric(selectedMetric.value, cities.value);
+      const allData = generateDataForMetric(selectedMetric.value, cities.value.map(city => city.name));
       
       // Filtrer par ville si nécessaire
       const filteredData = selectedCity.value === 'all' 
@@ -485,20 +486,20 @@ export default defineComponent({
       const trend: Record<string, number> = {};
       
       cities.value.forEach(city => {
-        const cityData = allData.filter(item => item.city === city);
+        const cityData = allData.filter(item => item.city === city.name);
         // Trier les données par timestamp (plus récente d'abord)
         cityData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         
         // Prendre la valeur la plus récente pour chaque ville
-        current[city] = cityData.length > 0 ? cityData[0].value : 0;
+        current[city.name] = cityData.length > 0 ? cityData[0].value : 0;
         
         // Calculer la moyenne pour chaque ville
-        average[city] = cityData.length > 0 
+        average[city.name] = cityData.length > 0 
           ? parseFloat((cityData.reduce((sum, item) => sum + item.value, 0) / cityData.length).toFixed(1))
           : 0;
 
         // Calculer la tendance (différence entre la valeur actuelle et la précédente)
-        trend[city] = cityData.length > 1 ? parseFloat((cityData[0].value - cityData[1].value).toFixed(1)) : 0;
+        trend[city.name] = cityData.length > 1 ? parseFloat((cityData[0].value - cityData[1].value).toFixed(1)) : 0;
       });
       
       currentValues.value = current;
@@ -533,8 +534,8 @@ export default defineComponent({
       
       const datasets = selectedCity.value === 'all'
         ? cities.value.map((city, index) => ({
-            label: city,
-            data: sortedData.map(item => item[city] || null),
+            label: city.name,
+            data: sortedData.map(item => item[city.name] || null),
             backgroundColor: COLORS[index % COLORS.length] + '20',
             borderColor: COLORS[index % COLORS.length],
             tension: 0.4
@@ -554,8 +555,8 @@ export default defineComponent({
     const prepareBarChartData = () => {
       if (Object.keys(averageValues.value).length === 0) return { labels: [], datasets: [] };
       
-      const labels = cities.value;
-      const data = cities.value.map(city => averageValues.value[city] || 0);
+      const labels = cities.value.map(city => city.name);
+      const data = cities.value.map(city => averageValues.value[city.name] || 0);
       
       return {
         labels,
@@ -573,8 +574,8 @@ export default defineComponent({
     const preparePieChartData = () => {
       if (Object.keys(currentValues.value).length === 0) return { labels: [], datasets: [] };
       
-      const labels = cities.value;
-      const data = cities.value.map(city => currentValues.value[city] || 0);
+      const labels = cities.value.map(city => city.name);
+      const data = cities.value.map(city => currentValues.value[city.name] || 0);
       
       return {
         labels,
@@ -765,7 +766,14 @@ export default defineComponent({
     });
 
     // Initialiser les données au montage du composant
-    onMounted(() => {
+    onMounted(async () => {
+      try {
+        console.log('Appel /api/regions/ depuis DashboardView');
+        const response = await environmentalApiService.getAvailableCities();
+        cities.value = response.data;
+      } catch (e) {
+        cities.value = [];
+      }
       loadData();
       console.log("Dashboard component mounted");
       console.log("Alerts:", alerts.value);

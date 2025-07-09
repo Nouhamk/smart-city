@@ -30,11 +30,7 @@
                 <label for="city" class="form-label">Ville</label>
                 <select v-model="filters.city" class="form-select" id="city">
                   <option value="all">Toutes</option>
-                  <option value="Paris">Paris</option>
-                  <option value="Lyon">Lyon</option>
-                  <option value="Marseille">Marseille</option>
-                  <option value="Bordeaux">Bordeaux</option>
-                  <option value="Lille">Lille</option>
+                  <option v-for="city in cities" :key="city.id" :value="city.name">{{ city.name }}</option>
                 </select>
               </div>
             </div>
@@ -134,6 +130,7 @@
   import 'leaflet/dist/leaflet.css';
   import * as L from 'leaflet';
   import * as Chart from 'chart.js';
+  import environmentalApiService from '@/services/environmentalApiService';
   
   // Corriger le problème d'icône de marqueur de Leaflet
   delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -260,6 +257,7 @@
         city: 'all',
         quality: 'all'
       });
+      const cities = ref<{ id: string; name: string; latitude: number; longitude: number }[]>([]);
       let miniChart: Chart.Chart | null = null;
       
       // Méthode pour obtenir la couleur en fonction de la qualité de l'air
@@ -447,7 +445,14 @@
       });
       
       // Initialiser la carte après le montage du composant
-      onMounted(() => {
+      onMounted(async () => {
+        try {
+          console.log('Appel /api/regions/ depuis MapView');
+          const response = await environmentalApiService.getAvailableCities();
+          cities.value = response.data;
+        } catch (e) {
+          cities.value = [];
+        }
         // Charger Bootstrap pour les modals
         const bootstrapScript = document.createElement('script');
         bootstrapScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js';
@@ -479,6 +484,7 @@
         selectedSensor,
         searchQuery,
         filters,
+        cities,
         getQualityColor,
         getQualityClass,
         getQualityLabel,

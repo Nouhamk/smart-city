@@ -37,8 +37,8 @@
               <div class="mb-3">
                 <label class="form-label">Zone de surveillance</label>
                 <select class="form-select" v-model="settings.monitoringZone" multiple>
-                  <option v-for="city in cities" :key="city" :value="city">
-                    {{ city }}
+                  <option v-for="city in cities" :key="city.id" :value="city.name">
+                    {{ city.name }}
                   </option>
                 </select>
               </div>
@@ -132,12 +132,13 @@
 <script lang="ts">
 import { defineComponent, ref, reactive, onMounted } from 'vue';
 import { useEnvironmentalStore } from '../store/environmental';
+import environmentalApiService from '../services/environmentalApiService';
 
 export default defineComponent({
   name: 'HistorySettingsView',
   setup() {
     const environmentalStore = useEnvironmentalStore();
-    const cities = ref(['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Lille']);
+    const cities = ref<{ id: string; name: string; latitude: number; longitude: number }[]>([]);
     const isSaving = ref(false);
 
     // Settings state
@@ -194,8 +195,14 @@ export default defineComponent({
       }
     };
 
-    onMounted(() => {
-      // Load initial data
+    onMounted(async () => {
+      try {
+        console.log('Appel /api/regions/ depuis HistorySettingsView');
+        const response = await environmentalApiService.getAvailableCities();
+        cities.value = response.data;
+      } catch (e) {
+        cities.value = [];
+      }
     });
 
     return {

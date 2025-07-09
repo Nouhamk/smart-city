@@ -214,6 +214,8 @@ export const dataService = {
   }
 };
 
+export { apiClient };
+
 export default {
   auth: authService,
   alert: alertService,

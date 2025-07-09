@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 import { MetricData } from '../store/dashboard'; 
+import { apiClient } from './api.service';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL_RAW = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL = API_URL_RAW.endsWith('/api') ? API_URL_RAW : API_URL_RAW.replace(/\/?$/, '/api');
 
 // Service pour les données environnementales
 const environmentalApiService = {
@@ -28,7 +30,7 @@ const environmentalApiService = {
       params.endDate = endDate;
     }
     
-    return axios.get<{ results: MetricData[] }>(`${API_URL}/environmental-data/metrics/`, { params });
+    return apiClient.get<{ results: MetricData[] }>(`${API_URL}/environmental-data/metrics/`, { params });
   },
   
   /**
@@ -42,7 +44,7 @@ const environmentalApiService = {
       params.city = city;
     }
     
-    return axios.get(`${API_URL}/environmental-data/current-weather/`, { params });
+    return apiClient.get(`${API_URL}/environmental-data/current-weather/`, { params });
   },
   
   /**
@@ -57,7 +59,7 @@ const environmentalApiService = {
       params.city = city;
     }
     
-    return axios.get(`${API_URL}/environmental-data/forecast/`, { params });
+    return apiClient.get(`${API_URL}/environmental-data/forecast/`, { params });
   },
   
   /**
@@ -76,21 +78,22 @@ const environmentalApiService = {
       params.type = type;
     }
     
-    return axios.get(`${API_URL}/environmental-data/alerts/`, { params });
+    return apiClient.get(`${API_URL}/environmental-data/alerts/`, { params });
   },
   
   /**
-   * Récupérer la liste des villes disponibles
+   * Récupérer la liste des villes/régions disponibles
    */
   getAvailableCities() {
-    return axios.get<string[]>(`${API_URL}/environmental-data/cities/`);
+    console.log('API_URL utilisé pour getAvailableCities:', API_URL);
+    return apiClient.get<{ id: string; name: string; latitude: number; longitude: number }[]>(`${API_URL}/regions/`);
   },
   
   /**
    * Récupérer la liste des métriques disponibles
    */
   getAvailableMetrics() {
-    return axios.get<{ id: string; label: string; unit: string }[]>(`${API_URL}/environmental-data/metrics/available/`);
+    return apiClient.get<{ id: string; label: string; unit: string }[]>(`${API_URL}/environmental-data/metrics/available/`);
   }
 };
 
