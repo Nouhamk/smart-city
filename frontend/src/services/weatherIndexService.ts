@@ -86,7 +86,7 @@ export const weatherIndexService = {
   // Obtenir l'indice météo actuel
   async getCurrentIndex(): Promise<WeatherIndex> {
     try {
-      const response: AxiosResponse<WeatherIndex> = await apiClient.get('/api/weather-index/current/');
+      const response: AxiosResponse<WeatherIndex> = await apiClient.get('/api/weather-index/');
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'indice météo actuel:', error);
@@ -97,13 +97,11 @@ export const weatherIndexService = {
   // Obtenir l'historique de l'indice météo
   async getHistory(page: number = 1, pageSize: number = 10): Promise<WeatherIndexHistory> {
     try {
-      const response: AxiosResponse<WeatherIndexHistory> = await apiClient.get('/api/weather-index/history/', {
-        params: {
-          page,
-          page_size: pageSize,
-        },
-      });
-      return response.data;
+      // Pour l'instant, retourner un historique vide car l'endpoint n'est pas encore implémenté
+      return {
+        count: 0,
+        results: []
+      };
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'historique:', error);
       throw error;
@@ -135,10 +133,8 @@ export const weatherIndexService = {
   // Obtenir les alertes météo actives
   async getAlerts(status: string = 'active'): Promise<{ alerts: WeatherAlert[] }> {
     try {
-      const response: AxiosResponse<{ alerts: WeatherAlert[] }> = await apiClient.get('/api/weather-index/alerts/', {
-        params: { status },
-      });
-      return response.data;
+      // Pour l'instant, retourner des alertes vides car l'endpoint n'existe pas encore
+      return { alerts: [] };
     } catch (error) {
       console.error('Erreur lors de la récupération des alertes:', error);
       throw error;
