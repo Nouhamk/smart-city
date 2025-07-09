@@ -7,5 +7,5 @@ app_name = 'data_api'
 urlpatterns = [
     path('api/data/', DataView.as_view(), name='get_data'),
     path('api/prediction/', PredictionView.as_view(), name='get_predictions'),
-    path('', include('data_api.weather_index.urls')),
+    path('api/', include('data_api.weather_index.urls')),
 ]

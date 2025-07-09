@@ -10,7 +10,7 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
 
     class Meta:
-        managed = False  # Don't let Django manage this table
+        managed = True  # Let Django manage this table
 
 class Alert(models.Model):
     ALERT_TYPE_CHOICES = [
@@ -36,7 +36,7 @@ class Alert(models.Model):
     data = models.JSONField(null=True, blank=True)
 
     class Meta:
-        managed = False
+        managed = True
 
     def __str__(self):
         return f"{self.type} - {self.status} - {self.created_at}"
@@ -47,7 +47,7 @@ class AlertThreshold(models.Model):
     zone = models.CharField(max_length=50, blank=True, null=True)  # optionnel, pour la gestion par zone
 
     class Meta:
-        managed = False
+        managed = True
 
     def __str__(self):
         return f"{self.type} - {self.value} - {self.zone or 'global'}"
@@ -59,7 +59,7 @@ class Region(models.Model):
     longitude = models.DecimalField(max_digits=10, decimal_places=7)
 
     class Meta:
-        managed = False
+        managed = True
 
     def __str__(self):
         return self.name

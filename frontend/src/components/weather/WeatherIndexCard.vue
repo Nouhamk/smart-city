@@ -3,362 +3,350 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">
-          <i class="bi bi-cloud-sun me-2"></i>
-          Indice Météo Global
+          <i class="fas fa-cloud-sun me-2"></i>
+          Indice Global Météo
         </h5>
-        <div class="d-flex align-items-center">
-          <span class="badge me-2" :class="getLevelBadgeClass(currentIndex?.level)">
-            {{ getLevelLabel(currentIndex?.level) }}
-          </span>
-          <button 
-            class="btn btn-sm btn-outline-secondary" 
-            @click="refreshData"
-            :disabled="loading"
-          >
-            <i class="bi bi-arrow-clockwise" :class="{ 'spinning': loading }"></i>
-          </button>
+        <div class="refresh-btn" @click="refreshIndex" :class="{ 'spinning': loading }">
+          <i class="fas fa-sync-alt"></i>
         </div>
       </div>
       
       <div class="card-body">
-        <div v-if="loading" class="text-center py-3">
+        <!-- Indice principal -->
+        <div class="index-display" v-if="!loading && weatherIndex">
+          <div class="index-value" :class="getLevelClass(weatherIndex.level)">
+            {{ weatherIndex.value.toFixed(1) }}
+          </div>
+          <div class="index-level" :class="getLevelClass(weatherIndex.level)">
+            {{ getLevelText(weatherIndex.level) }}
+          </div>
+          <div class="index-timestamp">
+            Mis à jour: {{ formatTimestamp(weatherIndex.timestamp) }}
+          </div>
+        </div>
+
+        <!-- Loading state -->
+        <div class="loading-state" v-if="loading">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Chargement...</span>
           </div>
+          <p class="mt-2">Calcul de l'indice météo...</p>
         </div>
-        
-        <div v-else-if="error" class="alert alert-danger">
-          {{ error }}
+
+        <!-- Error state -->
+        <div class="error-state" v-if="error">
+          <i class="fas fa-exclamation-triangle text-warning"></i>
+          <p class="mt-2">{{ error }}</p>
+          <button class="btn btn-sm btn-outline-primary" @click="refreshIndex">
+            Réessayer
+          </button>
         </div>
-        
-        <div v-else-if="currentIndex" class="weather-index-content">
-          <!-- Indice principal -->
-          <div class="index-display text-center mb-4">
-            <div class="index-value" :class="getIndexValueClass(currentIndex.index)">
-              {{ (currentIndex.index * 100).toFixed(1) }}
-            </div>
-            <div class="index-label">Indice Global</div>
-            <div class="index-region">{{ currentIndex.region }}</div>
-          </div>
-          
-          <!-- Barre de progression -->
-          <div class="progress mb-3" style="height: 8px;">
+
+        <!-- Détails des contributions -->
+        <div class="contributions" v-if="weatherIndex && weatherIndex.contributions">
+          <h6 class="mt-3 mb-2">Contributions par métrique:</h6>
+          <div class="contribution-bars">
             <div 
-              class="progress-bar" 
-              :class="getProgressBarClass(currentIndex.level)"
-              :style="{ width: (currentIndex.index * 100) + '%' }"
-              role="progressbar"
-              :aria-valuenow="currentIndex.index * 100"
-              aria-valuemin="0"
-              aria-valuemax="100"
-            ></div>
-          </div>
-          
-          <!-- Seuils d'alerte -->
-          <div class="thresholds mb-3">
-            <div class="d-flex justify-content-between small text-muted">
-              <span>Normal</span>
-              <span>Attention</span>
-              <span>Alerte</span>
-              <span>Critique</span>
-            </div>
-            <div class="d-flex justify-content-between small">
-              <span>0%</span>
-              <span>30%</span>
-              <span>50%</span>
-              <span>70%</span>
-              <span>80%</span>
-            </div>
-          </div>
-          
-          <!-- Détails des métriques -->
-          <div class="metrics-details">
-            <h6 class="mb-3">Contributions par métrique</h6>
-            <div class="row">
-              <div 
-                v-for="(detail, metric) in currentIndex.details" 
-                :key="metric"
-                class="col-md-6 mb-2"
-              >
-                <div class="metric-item">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <span class="metric-name">{{ getMetricLabel(metric) }}</span>
-                    <span class="metric-value">{{ detail.raw_value.toFixed(1) }}</span>
-                  </div>
-                  <div class="metric-bar">
-                    <div 
-                      class="metric-progress" 
-                      :style="{ 
-                        width: (detail.contribution / currentIndex.index * 100) + '%',
-                        backgroundColor: getMetricColor(metric)
-                      }"
-                    ></div>
-                  </div>
-                  <div class="d-flex justify-content-between small text-muted">
-                    <span>Poids: {{ (detail.weight * 100).toFixed(0) }}%</span>
-                    <span>Contribution: {{ (detail.contribution * 100).toFixed(1) }}%</span>
-                  </div>
-                </div>
+              v-for="(contribution, metric) in weatherIndex.contributions" 
+              :key="metric"
+              class="contribution-item"
+            >
+              <div class="metric-name">{{ getMetricName(metric) }}</div>
+              <div class="progress">
+                <div 
+                  class="progress-bar" 
+                  :style="{ width: Math.abs(contribution * 100) + '%' }"
+                  :class="contribution > 0 ? 'bg-success' : 'bg-danger'"
+                ></div>
+              </div>
+              <div class="contribution-value" :class="contribution > 0 ? 'text-success' : 'text-danger'">
+                {{ (contribution * 100).toFixed(1) }}%
               </div>
             </div>
           </div>
-          
-          <!-- Timestamp -->
-          <div class="text-muted small text-center mt-3">
-            Dernière mise à jour: {{ formatTimestamp(currentIndex.timestamp) }}
-          </div>
         </div>
-        
-        <div v-else class="text-center py-3 text-muted">
-          Aucune donnée disponible
+
+        <!-- Valeurs brutes -->
+        <div class="raw-values" v-if="weatherIndex && hasRawValues(weatherIndex)">
+          <h6 class="mt-3 mb-2">Valeurs actuelles:</h6>
+          <div class="row">
+            <div class="col-6" v-if="weatherIndex.temperature !== undefined">
+              <div class="metric-item">
+                <i class="fas fa-thermometer-half"></i>
+                <span>{{ weatherIndex.temperature.toFixed(1) }}°C</span>
+              </div>
+            </div>
+            <div class="col-6" v-if="weatherIndex.humidity !== undefined">
+              <div class="metric-item">
+                <i class="fas fa-tint"></i>
+                <span>{{ weatherIndex.humidity.toFixed(1) }}%</span>
+              </div>
+            </div>
+            <div class="col-6" v-if="weatherIndex.pressure !== undefined">
+              <div class="metric-item">
+                <i class="fas fa-compress-alt"></i>
+                <span>{{ weatherIndex.pressure.toFixed(0) }} hPa</span>
+              </div>
+            </div>
+            <div class="col-6" v-if="weatherIndex.precipitation !== undefined">
+              <div class="metric-item">
+                <i class="fas fa-cloud-rain"></i>
+                <span>{{ weatherIndex.precipitation.toFixed(1) }} mm</span>
+              </div>
+            </div>
+            <div class="col-6" v-if="weatherIndex.wind_speed !== undefined">
+              <div class="metric-item">
+                <i class="fas fa-wind"></i>
+                <span>{{ weatherIndex.wind_speed.toFixed(1) }} km/h</span>
+              </div>
+            </div>
+            <div class="col-6" v-if="weatherIndex.visibility !== undefined">
+              <div class="metric-item">
+                <i class="fas fa-eye"></i>
+                <span>{{ weatherIndex.visibility.toFixed(0) }} km</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted, computed } from 'vue';
-import { WeatherIndex } from '../../services/weatherIndexService';
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { weatherIndexService, type WeatherIndex } from '@/services/weatherIndexService';
 
-export default defineComponent({
-  name: 'WeatherIndexCard',
-  props: {
-    region: {
-      type: String,
-      default: null
-    }
-  },
-  setup(props) {
-    const currentIndex = ref<WeatherIndex | null>(null);
-    const loading = ref(false);
-    const error = ref<string | null>(null);
+// Props et emits
+const props = defineProps<{
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+}>();
 
-    const refreshData = async () => {
-      loading.value = true;
-      error.value = null;
-      
-      try {
-        // Simuler l'appel API pour l'instant
-        // const data = await weatherIndexService.getCurrentWeatherIndex(props.region ? [props.region] : undefined);
-        // currentIndex.value = data[0] || null;
-        
-        // Données simulées pour la démonstration
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        currentIndex.value = {
-          index: 0.65,
-          level: 'high',
-          region: props.region || 'Paris',
-          timestamp: new Date().toISOString(),
-          details: {
-            temperature: {
-              raw_value: 28.5,
-              normalized: 0.7,
-              weight: 0.25,
-              contribution: 0.175
-            },
-            humidity: {
-              raw_value: 75.0,
-              normalized: 0.6,
-              weight: 0.20,
-              contribution: 0.120
-            },
-            pressure: {
-              raw_value: 1010.0,
-              normalized: 0.4,
-              weight: 0.15,
-              contribution: 0.060
-            },
-            precipitation: {
-              raw_value: 5.0,
-              normalized: 0.8,
-              weight: 0.15,
-              contribution: 0.120
-            },
-            wind_speed: {
-              raw_value: 25.0,
-              normalized: 0.5,
-              weight: 0.10,
-              contribution: 0.050
-            },
-            visibility: {
-              raw_value: 8.0,
-              normalized: 0.3,
-              weight: 0.10,
-              contribution: 0.030
-            },
-            cloud_cover: {
-              raw_value: 60.0,
-              normalized: 0.6,
-              weight: 0.05,
-              contribution: 0.030
-            }
-          }
-        };
-      } catch (err: any) {
-        error.value = err.message || 'Erreur lors du chargement des données';
-      } finally {
-        loading.value = false;
-      }
-    };
+const emit = defineEmits<{
+  indexUpdated: [index: WeatherIndex];
+  error: [error: string];
+}>();
 
-    const getLevelBadgeClass = (level: string | undefined) => {
-      switch (level) {
-        case 'low': return 'bg-success';
-        case 'medium': return 'bg-warning';
-        case 'high': return 'bg-danger';
-        case 'critical': return 'bg-dark';
-        default: return 'bg-secondary';
-      }
-    };
+// Reactive data
+const weatherIndex = ref<WeatherIndex | null>(null);
+const loading = ref(false);
+const error = ref<string | null>(null);
+let refreshTimer: number | null = null;
 
-    const getLevelLabel = (level: string | undefined) => {
-      switch (level) {
-        case 'low': return 'Normal';
-        case 'medium': return 'Attention';
-        case 'high': return 'Alerte';
-        case 'critical': return 'Critique';
-        default: return 'Inconnu';
-      }
-    };
+// Methods
+const refreshIndex = async () => {
+  loading.value = true;
+  error.value = null;
+  
+  try {
+    const index = await weatherIndexService.getCurrentIndex();
+    weatherIndex.value = index;
+    emit('indexUpdated', index);
+  } catch (err: any) {
+    error.value = err.response?.data?.message || 'Erreur lors du chargement de l\'indice météo';
+    emit('error', error.value);
+  } finally {
+    loading.value = false;
+  }
+};
 
-    const getIndexValueClass = (index: number) => {
-      if (index >= 0.8) return 'text-danger';
-      if (index >= 0.7) return 'text-warning';
-      if (index >= 0.5) return 'text-info';
-      return 'text-success';
-    };
+const getLevelClass = (level: string) => {
+  switch (level) {
+    case 'low': return 'level-low';
+    case 'medium': return 'level-medium';
+    case 'high': return 'level-high';
+    case 'critical': return 'level-critical';
+    default: return 'level-low';
+  }
+};
 
-    const getProgressBarClass = (level: string) => {
-      switch (level) {
-        case 'low': return 'bg-success';
-        case 'medium': return 'bg-warning';
-        case 'high': return 'bg-danger';
-        case 'critical': return 'bg-dark';
-        default: return 'bg-secondary';
-      }
-    };
+const getLevelText = (level: string) => {
+  switch (level) {
+    case 'low': return 'Faible';
+    case 'medium': return 'Modéré';
+    case 'high': return 'Élevé';
+    case 'critical': return 'Critique';
+    default: return 'Inconnu';
+  }
+};
 
-    const getMetricLabel = (metric: string) => {
-      const labels: { [key: string]: string } = {
-        temperature: 'Température',
-        humidity: 'Humidité',
-        pressure: 'Pression',
-        precipitation: 'Précipitations',
-        wind_speed: 'Vitesse du vent',
-        visibility: 'Visibilité',
-        cloud_cover: 'Couverture nuageuse'
-      };
-      return labels[metric] || metric;
-    };
+const formatTimestamp = (timestamp: string) => {
+  return new Date(timestamp).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
-    const getMetricColor = (metric: string) => {
-      const colors: { [key: string]: string } = {
-        temperature: '#dc3545',
-        humidity: '#0d6efd',
-        pressure: '#6f42c1',
-        precipitation: '#198754',
-        wind_speed: '#fd7e14',
-        visibility: '#20c997',
-        cloud_cover: '#6c757d'
-      };
-      return colors[metric] || '#6c757d';
-    };
+const getMetricName = (metric: string) => {
+  const names: { [key: string]: string } = {
+    temperature: 'Température',
+    humidity: 'Humidité',
+    pressure: 'Pression',
+    precipitation: 'Précipitations',
+    wind_speed: 'Vitesse du vent',
+    visibility: 'Visibilité',
+    cloud_cover: 'Couverture nuageuse'
+  };
+  return names[metric] || metric;
+};
 
-    const formatTimestamp = (timestamp: string) => {
-      return new Date(timestamp).toLocaleString('fr-FR');
-    };
+const hasRawValues = (index: WeatherIndex) => {
+  return index.temperature !== undefined || 
+         index.humidity !== undefined || 
+         index.pressure !== undefined || 
+         index.precipitation !== undefined || 
+         index.wind_speed !== undefined || 
+         index.visibility !== undefined;
+};
 
-    onMounted(() => {
-      refreshData();
-    });
+// Lifecycle
+onMounted(() => {
+  refreshIndex();
+  
+  if (props.autoRefresh && props.refreshInterval) {
+    refreshTimer = window.setInterval(refreshIndex, props.refreshInterval);
+  }
+});
 
-    return {
-      currentIndex,
-      loading,
-      error,
-      refreshData,
-      getLevelBadgeClass,
-      getLevelLabel,
-      getIndexValueClass,
-      getProgressBarClass,
-      getMetricLabel,
-      getMetricColor,
-      formatTimestamp
-    };
+// Cleanup
+import { onUnmounted } from 'vue';
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
   }
 });
 </script>
 
 <style scoped>
 .weather-index-card {
-  height: 100%;
+  margin-bottom: 1rem;
 }
 
-.index-display {
-  padding: 1rem 0;
+.card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: none;
 }
 
-.index-value {
-  font-size: 3rem;
-  font-weight: bold;
-  line-height: 1;
+.refresh-btn {
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
 }
 
-.index-label {
-  font-size: 0.9rem;
-  color: #6c757d;
-  margin-top: 0.5rem;
+.refresh-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
-.index-region {
-  font-size: 1.1rem;
-  font-weight: 500;
-  margin-top: 0.25rem;
-}
-
-.thresholds {
-  border-top: 1px solid #dee2e6;
-  padding-top: 1rem;
-}
-
-.metric-item {
-  background-color: #f8f9fa;
-  padding: 0.75rem;
-  border-radius: 0.375rem;
-  border: 1px solid #dee2e6;
-}
-
-.metric-name {
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.metric-value {
-  font-weight: bold;
-  color: #495057;
-}
-
-.metric-bar {
-  height: 4px;
-  background-color: #e9ecef;
-  border-radius: 2px;
-  margin: 0.5rem 0;
-  overflow: hidden;
-}
-
-.metric-progress {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.spinning {
+.refresh-btn.spinning i {
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.index-display {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.index-value {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.index-level {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.index-timestamp {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.level-low {
+  color: #28a745;
+}
+
+.level-medium {
+  color: #ffc107;
+}
+
+.level-high {
+  color: #fd7e14;
+}
+
+.level-critical {
+  color: #dc3545;
+}
+
+.loading-state, .error-state {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.contributions {
+  margin-top: 1rem;
+}
+
+.contribution-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+.metric-name {
+  min-width: 100px;
+  font-size: 0.9rem;
+}
+
+.progress {
+  flex: 1;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.contribution-value {
+  min-width: 60px;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.raw-values {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.metric-item i {
+  width: 16px;
+  color: #6c757d;
 }
 </style> 

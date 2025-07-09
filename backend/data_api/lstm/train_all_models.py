@@ -57,7 +57,7 @@ def min_max_normalize(arr):
 def train_all_models():
     all_metrics = get_all_metrics()
     data_train = get_data_common()
-    for metric in all_metrics[0:1]:
+    for metric in all_metrics[2:3]:
         X, y = preprocess_train_data(data_train, metric)
         train_ai(X, y, metric)
 

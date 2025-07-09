@@ -162,14 +162,39 @@
     quality: string;
   }
   
-  // Données simulées pour les capteurs
+  // Nouvelle liste statique des villes
+  interface CityData {
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+  }
+  
+  const cities = ref<CityData[]>([
+    { id: '1', name: 'New York', latitude: 40.712776, longitude: -74.005974 },
+    { id: '2', name: 'Los Angeles', latitude: 34.052235, longitude: -118.243683 },
+    { id: '3', name: 'London', latitude: 51.507351, longitude: -0.127758 },
+    { id: '4', name: 'Paris', latitude: 48.856614, longitude: 2.352222 },
+    { id: '5', name: 'Sao Paolo', latitude: -23.550520, longitude: -46.633308 },
+    { id: '6', name: 'Istanbul', latitude: 41.008240, longitude: 28.978359 },
+    { id: '7', name: 'Beijing', latitude: 39.904202, longitude: 116.407394 },
+    { id: '8', name: 'Berlin', latitude: 52.520008, longitude: 13.404954 },
+    { id: '9', name: 'Tokyo', latitude: 35.689487, longitude: 139.691711 },
+    { id: '10', name: 'Mosco', latitude: 55.755825, longitude: 37.617298 },
+    { id: '11', name: 'Cairo', latitude: 30.044420, longitude: 31.235712 },
+    { id: '12', name: 'Mumbai', latitude: 19.076090, longitude: 72.877426 },
+    { id: '13', name: 'Mexico City', latitude: 19.432608, longitude: -99.133209 },
+    { id: '14', name: 'Toronto', latitude: 43.653225, longitude: -79.383186 }
+  ]);
+  
+  // Adapter les capteurs simulés pour correspondre aux nouvelles villes
   const mockSensors: Sensor[] = [
     {
       id: 1,
-      name: 'Capteur Paris Centre',
-      location: 'Paris, Île-de-France',
-      latitude: 48.856614,
-      longitude: 2.352222,
+      name: 'Sensor New York',
+      location: 'New York',
+      latitude: 40.712776,
+      longitude: -74.005974,
       airQuality: 42,
       temperature: 22,
       humidity: 65,
@@ -181,10 +206,10 @@
     },
     {
       id: 2,
-      name: 'Capteur Lyon Centre',
-      location: 'Lyon, Auvergne-Rhône-Alpes',
-      latitude: 45.764043,
-      longitude: 4.835659,
+      name: 'Sensor Los Angeles',
+      location: 'Los Angeles',
+      latitude: 34.052235,
+      longitude: -118.243683,
       airQuality: 65,
       temperature: 24,
       humidity: 60,
@@ -196,10 +221,10 @@
     },
     {
       id: 3,
-      name: 'Capteur Marseille Port',
-      location: 'Marseille, Provence-Alpes-Côte d\'Azur',
-      latitude: 43.296482,
-      longitude: 5.369780,
+      name: 'Sensor London',
+      location: 'London',
+      latitude: 51.507351,
+      longitude: -0.127758,
       airQuality: 85,
       temperature: 26,
       humidity: 55,
@@ -211,10 +236,10 @@
     },
     {
       id: 4,
-      name: 'Capteur Bordeaux Centre',
-      location: 'Bordeaux, Nouvelle-Aquitaine',
-      latitude: 44.837789,
-      longitude: -0.579180,
+      name: 'Sensor Paris',
+      location: 'Paris',
+      latitude: 48.856614,
+      longitude: 2.352222,
       airQuality: 48,
       temperature: 20,
       humidity: 70,
@@ -226,10 +251,10 @@
     },
     {
       id: 5,
-      name: 'Capteur Lille Centre',
-      location: 'Lille, Hauts-de-France',
-      latitude: 50.629250,
-      longitude: 3.057256,
+      name: 'Sensor Sao Paolo',
+      location: 'Sao Paolo',
+      latitude: -23.550520,
+      longitude: -46.633308,
       airQuality: 55,
       temperature: 18,
       humidity: 75,
@@ -237,6 +262,141 @@
       historicalData: {
         timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
         values: [52, 54, 55, 56, 55]
+      }
+    },
+    {
+      id: 6,
+      name: 'Sensor Istanbul',
+      location: 'Istanbul',
+      latitude: 41.008240,
+      longitude: 28.978359,
+      airQuality: 60,
+      temperature: 23,
+      humidity: 68,
+      lastUpdated: '2023-01-10T10:55:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [62, 61, 60, 59, 60]
+      }
+    },
+    {
+      id: 7,
+      name: 'Sensor Beijing',
+      location: 'Beijing',
+      latitude: 39.904202,
+      longitude: 116.407394,
+      airQuality: 90,
+      temperature: 28,
+      humidity: 50,
+      lastUpdated: '2023-01-10T11:00:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [88, 89, 90, 92, 90]
+      }
+    },
+    {
+      id: 8,
+      name: 'Sensor Berlin',
+      location: 'Berlin',
+      latitude: 52.520008,
+      longitude: 13.404954,
+      airQuality: 35,
+      temperature: 19,
+      humidity: 72,
+      lastUpdated: '2023-01-10T11:05:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [36, 34, 35, 33, 35]
+      }
+    },
+    {
+      id: 9,
+      name: 'Sensor Tokyo',
+      location: 'Tokyo',
+      latitude: 35.689487,
+      longitude: 139.691711,
+      airQuality: 70,
+      temperature: 27,
+      humidity: 60,
+      lastUpdated: '2023-01-10T11:10:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [68, 69, 70, 71, 70]
+      }
+    },
+    {
+      id: 10,
+      name: 'Sensor Mosco',
+      location: 'Mosco',
+      latitude: 55.755825,
+      longitude: 37.617298,
+      airQuality: 50,
+      temperature: 16,
+      humidity: 80,
+      lastUpdated: '2023-01-10T11:15:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [52, 51, 50, 49, 50]
+      }
+    },
+    {
+      id: 11,
+      name: 'Sensor Cairo',
+      location: 'Cairo',
+      latitude: 30.044420,
+      longitude: 31.235712,
+      airQuality: 77,
+      temperature: 32,
+      humidity: 40,
+      lastUpdated: '2023-01-10T11:20:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [75, 76, 77, 78, 77]
+      }
+    },
+    {
+      id: 12,
+      name: 'Sensor Mumbai',
+      location: 'Mumbai',
+      latitude: 19.076090,
+      longitude: 72.877426,
+      airQuality: 68,
+      temperature: 30,
+      humidity: 85,
+      lastUpdated: '2023-01-10T11:25:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [66, 67, 68, 69, 68]
+      }
+    },
+    {
+      id: 13,
+      name: 'Sensor Mexico City',
+      location: 'Mexico City',
+      latitude: 19.432608,
+      longitude: -99.133209,
+      airQuality: 80,
+      temperature: 25,
+      humidity: 60,
+      lastUpdated: '2023-01-10T11:30:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [78, 79, 80, 81, 80]
+      }
+    },
+    {
+      id: 14,
+      name: 'Sensor Toronto',
+      location: 'Toronto',
+      latitude: 43.653225,
+      longitude: -79.383186,
+      airQuality: 40,
+      temperature: 17,
+      humidity: 75,
+      lastUpdated: '2023-01-10T11:35:00',
+      historicalData: {
+        timestamps: ['00:00', '06:00', '12:00', '18:00', '00:00'],
+        values: [42, 41, 40, 39, 40]
       }
     }
   ];
@@ -257,7 +417,8 @@
         city: 'all',
         quality: 'all'
       });
-      const cities = ref<{ id: string; name: string; latitude: number; longitude: number }[]>([]);
+      // const cities = ref<{ id: string; name: string; latitude: number; longitude: number }[]>([]);
+      // cities est déjà défini plus haut avec la nouvelle liste statique
       let miniChart: Chart.Chart | null = null;
       
       // Méthode pour obtenir la couleur en fonction de la qualité de l'air
@@ -446,13 +607,14 @@
       
       // Initialiser la carte après le montage du composant
       onMounted(async () => {
-        try {
-          console.log('Appel /api/regions/ depuis MapView');
-          const response = await environmentalApiService.getAvailableCities();
-          cities.value = response.data;
-        } catch (e) {
-          cities.value = [];
-        }
+        // Supprimer l'appel à l'API pour les villes
+        // try {
+        //   console.log('Appel /api/regions/ depuis MapView');
+        //   const response = await environmentalApiService.getAvailableCities();
+        //   cities.value = response.data;
+        // } catch (e) {
+        //   cities.value = [];
+        // }
         // Charger Bootstrap pour les modals
         const bootstrapScript = document.createElement('script');
         bootstrapScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js';

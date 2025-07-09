@@ -32,47 +32,36 @@ export interface WeatherIndexConfig {
   critical_threshold: number;
   high_threshold: number;
   medium_threshold: number;
-  metric_weights: {
+  weights: {
     [metric: string]: number;
   };
-  reference_values?: {
-    [metric: string]: {
-      min: number;
-      max: number;
-      optimal: number;
-    };
-  };
 }
 
-export interface WeatherIndexAlert {
-  id: number;
-  title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  status: 'active' | 'acknowledged' | 'resolved';
-  created_at: string;
-  acknowledged_at?: string;
-  resolved_at?: string;
-  data?: {
-    region: string;
-    index_value: number;
-    level: string;
-    details: any;
-  };
-}
-
-export interface WeatherIndexHistoryResponse {
+export interface WeatherIndexHistory {
   count: number;
   next?: string;
   previous?: string;
   results: WeatherIndex[];
 }
 
+export interface WeatherAlert {
+  id: number;
+  type: string;
+  message: string;
+  level: string;
+  status: string;
+  created_at: string;
+  weather_index_value?: number;
+  weather_index_level?: string;
+}
+
+// Configuration de l'API
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
 
-// Instance axios avec configuration
+// Client axios configuré
 const apiClient = axios.create({
   baseURL: API_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -92,157 +81,76 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Service pour l'indice météo
 export const weatherIndexService = {
-  /**
-   * Récupère l'indice météo global actuel
-   */
-  async getCurrentIndex(): Promise<AxiosResponse<WeatherIndex>> {
+  // Obtenir l'indice météo actuel
+  async getCurrentIndex(): Promise<WeatherIndex> {
     try {
       const response: AxiosResponse<WeatherIndex> = await apiClient.get('/api/weather-index/current/');
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'indice météo actuel:', error);
       throw error;
     }
   },
 
-  /**
-   * Récupère l'historique de l'indice météo avec pagination
-   */
-  async getIndexHistory(params: {
-    page?: number;
-    page_size?: number;
-    level?: string;
-    start_date?: string;
-    end_date?: string;
-  } = {}): Promise<AxiosResponse<WeatherIndexHistoryResponse>> {
+  // Obtenir l'historique de l'indice météo
+  async getHistory(page: number = 1, pageSize: number = 10): Promise<WeatherIndexHistory> {
     try {
-      const response: AxiosResponse<WeatherIndexHistoryResponse> = await apiClient.get('/api/weather-index/history/', {
-        params
-      });
-      return response;
+      // Pour l'instant, retourner un historique vide car l'endpoint n'est pas encore implémenté
+      return {
+        count: 0,
+        results: []
+      };
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'historique:', error);
       throw error;
     }
   },
 
-  /**
-   * Récupère la configuration de l'indice météo
-   */
-  async getConfiguration(): Promise<AxiosResponse<WeatherIndexConfig>> {
+  // Obtenir la configuration de l'indice météo
+  async getConfig(): Promise<WeatherIndexConfig> {
     try {
       const response: AxiosResponse<WeatherIndexConfig> = await apiClient.get('/api/weather-index/config/');
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération de la configuration:', error);
       throw error;
     }
   },
 
-  /**
-   * Met à jour la configuration de l'indice météo
-   */
-  async updateConfiguration(config: Partial<WeatherIndexConfig>): Promise<AxiosResponse<WeatherIndexConfig>> {
+  // Mettre à jour la configuration de l'indice météo
+  async updateConfig(config: Partial<WeatherIndexConfig>): Promise<WeatherIndexConfig> {
     try {
       const response: AxiosResponse<WeatherIndexConfig> = await apiClient.put('/api/weather-index/config/', config);
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la configuration:', error);
       throw error;
     }
   },
 
-  /**
-   * Récupère les alertes actives
-   */
-  async getActiveAlerts(): Promise<AxiosResponse<WeatherIndexAlert[]>> {
+  // Obtenir les alertes météo actives
+  async getAlerts(status: string = 'active'): Promise<{ alerts: WeatherAlert[] }> {
     try {
-      const response: AxiosResponse<WeatherIndexAlert[]> = await apiClient.get('/api/weather-index/alerts/', {
-        params: { status: 'active' }
-      });
-      return response;
-    } catch (error) {
-      console.error('Erreur lors de la récupération des alertes actives:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Accuse réception d'une alerte
-   */
-  async acknowledgeAlert(alertId: number): Promise<AxiosResponse<void>> {
-    try {
-      const response: AxiosResponse<void> = await apiClient.put(`/api/weather-index/alerts/${alertId}/acknowledge/`);
-      return response;
-    } catch (error) {
-      console.error('Erreur lors de l\'accusé de réception:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Résout une alerte
-   */
-  async resolveAlert(alertId: number): Promise<AxiosResponse<void>> {
-    try {
-      const response: AxiosResponse<void> = await apiClient.put(`/api/weather-index/alerts/${alertId}/resolve/`);
-      return response;
-    } catch (error) {
-      console.error('Erreur lors de la résolution de l\'alerte:', error);
-      throw error;
-    }
-  },
-
-  // Méthodes legacy pour compatibilité
-  async getCurrentWeatherIndex(regions?: string[]): Promise<WeatherIndex[]> {
-    try {
-      const params: any = {};
-      if (regions && regions.length > 0) {
-        params.regions = regions.join(',');
-      }
-      
-      const response: AxiosResponse<WeatherIndex[]> = await apiClient.get('/api/weather-index/', { params });
-      return response.data;
-    } catch (error) {
-      console.error('Erreur lors de la récupération de l\'indice météo:', error);
-      throw error;
-    }
-  },
-
-  async getWeatherIndexHistory(region: string, hours: number = 24): Promise<WeatherIndex[]> {
-    try {
-      const response: AxiosResponse<WeatherIndex[]> = await apiClient.get('/api/weather-index/history/', {
-        params: { region, hours }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Erreur lors de la récupération de l\'historique:', error);
-      throw error;
-    }
-  },
-
-  async getWeatherIndexConfig(): Promise<WeatherIndexConfig> {
-    try {
-      const response: AxiosResponse<WeatherIndexConfig> = await apiClient.get('/api/weather-index/config/');
-      return response.data;
-    } catch (error) {
-      console.error('Erreur lors de la récupération de la configuration:', error);
-      throw error;
-    }
-  },
-
-  async getWeatherIndexAlerts(status: string = 'active'): Promise<WeatherIndexAlert[]> {
-    try {
-      const response: AxiosResponse<WeatherIndexAlert[]> = await apiClient.get('/api/alerts/', {
-        params: { type: 'weather_index', status }
-      });
-      return response.data;
+      // Pour l'instant, retourner des alertes vides car l'endpoint n'existe pas encore
+      return { alerts: [] };
     } catch (error) {
       console.error('Erreur lors de la récupération des alertes:', error);
       throw error;
     }
-  }
+  },
+
+  // Calculer l'indice météo (pour forcer un recalcul)
+  async calculateIndex(): Promise<WeatherIndex> {
+    try {
+      const response: AxiosResponse<WeatherIndex> = await apiClient.get('/api/weather-index/');
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors du calcul de l\'indice météo:', error);
+      throw error;
+    }
+  },
 };
 
 export default weatherIndexService; 

@@ -10,17 +10,17 @@
           <div class="col-md-6 mb-3">
             <label for="metricSelect" class="form-label">Métrique</label>
             <select id="metricSelect" class="form-select" v-model="selectedMetric">
-              <option value="temp">Température (2 m)</option>
+              <option value="temp">Température</option>
               <option value="feelslike">Température ressentie</option>
-              <option value="humidity">Humidité relative (2 m)</option>
-              <option value="dew">Point de rosée (2 m)</option>
+              <option value="humidity">Humidité relative</option>
+              <option value="dew">Point de rosée</option>
               <option value="precipprob">Probabilité de précipitation</option>
               <option value="precip">Précipitation (pluie + averses + neige)</option>
               <option value="snow">Chute de neige</option>
               <option value="snowdepth">Épaisseur de neige</option>
-              <option value="windgust">Rafales de vent (10 m)</option>
-              <option value="windspeed">Vitesse du vent (10 m)</option>
-              <option value="winddir">Direction du vent (10 m)</option>
+              <option value="windgust">Rafales de vent</option>
+              <option value="windspeed">Vitesse du vent</option>
+              <option value="winddir">Direction du vent</option>
               <option value="pressure">Pression au niveau de la mer</option>
               <option value="visibility">Visibilité</option>
               <option value="cloudcover">Couverture nuageuse totale</option>

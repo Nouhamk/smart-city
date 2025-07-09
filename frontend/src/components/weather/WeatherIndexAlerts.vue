@@ -1,114 +1,82 @@
 <template>
-  <div class="weather-index-alerts">
+  <div class="weather-alerts">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">
-          <i class="bi bi-exclamation-triangle me-2"></i>
-          Alertes Indice Météo
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Alertes Météo
         </h5>
-        <div class="d-flex align-items-center">
-          <span class="badge bg-primary me-2">{{ alerts.length }}</span>
-          <button 
-            class="btn btn-sm btn-outline-secondary" 
-            @click="refreshAlerts"
-            :disabled="loading"
-          >
-            <i class="bi bi-arrow-clockwise" :class="{ 'spinning': loading }"></i>
-          </button>
+        <div class="refresh-btn" @click="refreshAlerts" :class="{ 'spinning': loading }">
+          <i class="fas fa-sync-alt"></i>
         </div>
       </div>
       
       <div class="card-body">
-        <div v-if="loading" class="text-center py-3">
+        <!-- Loading state -->
+        <div class="loading-state" v-if="loading">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Chargement...</span>
           </div>
+          <p class="mt-2">Chargement des alertes...</p>
         </div>
-        
-        <div v-else-if="error" class="alert alert-danger">
-          {{ error }}
+
+        <!-- Error state -->
+        <div class="error-state" v-if="error">
+          <i class="fas fa-exclamation-triangle text-warning"></i>
+          <p class="mt-2">{{ error }}</p>
+          <button class="btn btn-sm btn-outline-primary" @click="refreshAlerts">
+            Réessayer
+          </button>
         </div>
-        
-        <div v-else-if="alerts.length === 0" class="text-center py-3 text-muted">
-          <i class="bi bi-check-circle fs-1 text-success"></i>
-          <p class="mt-2">Aucune alerte active</p>
+
+        <!-- No alerts state -->
+        <div class="no-alerts" v-if="!loading && !error && (!alerts || alerts.length === 0)">
+          <i class="fas fa-check-circle text-success"></i>
+          <p class="mt-2">Aucune alerte météo active</p>
+          <small class="text-muted">La situation météorologique est normale</small>
         </div>
-        
-        <div v-else class="alerts-list">
+
+        <!-- Alerts list -->
+        <div class="alerts-list" v-if="!loading && !error && alerts && alerts.length > 0">
           <div 
             v-for="alert in alerts" 
             :key="alert.id"
             class="alert-item"
             :class="getAlertClass(alert.level)"
           >
-            <div class="alert-header d-flex justify-content-between align-items-start">
-              <div class="alert-info">
-                <div class="alert-title d-flex align-items-center">
-                  <span class="badge me-2" :class="getLevelBadgeClass(alert.level)">
-                    {{ getLevelLabel(alert.level) }}
-                  </span>
-                  <strong>{{ alert.data.region }}</strong>
-                </div>
-                <div class="alert-message mt-1">{{ alert.message }}</div>
-                <div class="alert-details mt-2">
-                  <small class="text-muted">
-                    Indice: {{ alert.data.index_value.toFixed(3) }} | 
-                    Créé: {{ formatTimestamp(alert.created_at) }}
-                  </small>
-                </div>
+            <div class="alert-header">
+              <div class="alert-icon">
+                <i :class="getAlertIcon(alert.type)"></i>
               </div>
-              
-              <div class="alert-actions">
-                <div class="btn-group btn-group-sm">
-                  <button 
-                    v-if="alert.status === 'active'"
-                    class="btn btn-outline-primary"
-                    @click="acknowledgeAlert(alert.id)"
-                    :disabled="processingAlert === alert.id"
-                  >
-                    <i class="bi bi-check"></i>
-                  </button>
-                  <button 
-                    class="btn btn-outline-success"
-                    @click="resolveAlert(alert.id)"
-                    :disabled="processingAlert === alert.id"
-                  >
-                    <i class="bi bi-check-circle"></i>
-                  </button>
-                </div>
+              <div class="alert-info">
+                <div class="alert-title">{{ alert.type }}</div>
+                <div class="alert-level">{{ getLevelText(alert.level) }}</div>
+              </div>
+              <div class="alert-time">
+                {{ formatTimestamp(alert.created_at) }}
               </div>
             </div>
             
-            <!-- Détails des métriques -->
-            <div v-if="alert.data.details" class="alert-metrics mt-3">
-              <h6 class="mb-2">Contributions par métrique :</h6>
-              <div class="row">
-                <div 
-                  v-for="(detail, metric) in alert.data.details" 
-                  :key="metric"
-                  class="col-md-6 mb-2"
-                >
-                  <div class="metric-summary">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <span class="metric-name">{{ getMetricLabel(metric) }}</span>
-                      <span class="metric-value">{{ detail.raw_value.toFixed(1) }}</span>
-                    </div>
-                    <div class="metric-bar">
-                      <div 
-                        class="metric-progress" 
-                        :style="{ 
-                          width: (detail.contribution / alert.data.index_value * 100) + '%',
-                          backgroundColor: getMetricColor(metric)
-                        }"
-                      ></div>
-                    </div>
-                    <div class="d-flex justify-content-between small text-muted">
-                      <span>Poids: {{ (detail.weight * 100).toFixed(0) }}%</span>
-                      <span>Contribution: {{ (detail.contribution * 100).toFixed(1) }}%</span>
-                    </div>
-                  </div>
-                </div>
+            <div class="alert-message">
+              {{ alert.message }}
+            </div>
+            
+            <div class="alert-details" v-if="alert.weather_index_value !== undefined">
+              <div class="index-info">
+                <span class="label">Indice météo:</span>
+                <span class="value" :class="getLevelClass(alert.weather_index_level)">
+                  {{ alert.weather_index_value.toFixed(1) }}
+                </span>
+                <span class="level" :class="getLevelClass(alert.weather_index_level)">
+                  ({{ getLevelText(alert.weather_index_level) }})
+                </span>
               </div>
+            </div>
+            
+            <div class="alert-status">
+              <span class="badge" :class="getStatusClass(alert.status)">
+                {{ getStatusText(alert.status) }}
+              </span>
             </div>
           </div>
         </div>
@@ -117,297 +85,281 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
-import { WeatherIndexAlert } from '../../services/weatherIndexService';
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { weatherIndexService, type WeatherAlert } from '@/services/weatherIndexService';
 
-export default defineComponent({
-  name: 'WeatherIndexAlerts',
-  setup() {
-    const alerts = ref<WeatherIndexAlert[]>([]);
-    const loading = ref(false);
-    const error = ref<string | null>(null);
-    const processingAlert = ref<string | null>(null);
+// Props et emits
+const props = defineProps<{
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+  status?: string;
+}>();
 
-    const refreshAlerts = async () => {
-      loading.value = true;
-      error.value = null;
-      
-      try {
-        // Simuler l'appel API pour l'instant
-        // const data = await weatherIndexService.getWeatherIndexAlerts('active');
-        // alerts.value = data;
-        
-        // Données simulées pour la démonstration
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        alerts.value = [
-          {
-            id: '1',
-            type: 'weather_index',
-            message: 'Indice météo global: 0.750 - Alerte',
-            level: 'high',
-            status: 'active',
-            created_at: new Date().toISOString(),
-            data: {
-              region: 'Paris',
-              index_value: 0.750,
-              level: 'high',
-              details: {
-                temperature: {
-                  raw_value: 32.0,
-                  normalized: 0.8,
-                  weight: 0.25,
-                  contribution: 0.2
-                },
-                humidity: {
-                  raw_value: 85.0,
-                  normalized: 0.7,
-                  weight: 0.20,
-                  contribution: 0.14
-                },
-                precipitation: {
-                  raw_value: 15.0,
-                  normalized: 0.9,
-                  weight: 0.15,
-                  contribution: 0.135
-                }
-              },
-              description: 'Conditions météorologiques défavorables - alerte active'
-            }
-          },
-          {
-            id: '2',
-            type: 'weather_index',
-            message: 'Indice météo global: 0.650 - Attention',
-            level: 'medium',
-            status: 'active',
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-            data: {
-              region: 'Lyon',
-              index_value: 0.650,
-              level: 'medium',
-              details: {
-                temperature: {
-                  raw_value: 28.0,
-                  normalized: 0.6,
-                  weight: 0.25,
-                  contribution: 0.15
-                },
-                wind_speed: {
-                  raw_value: 35.0,
-                  normalized: 0.7,
-                  weight: 0.10,
-                  contribution: 0.07
-                }
-              },
-              description: 'Conditions météorologiques nécessitant une attention particulière'
-            }
-          }
-        ];
-      } catch (err: any) {
-        error.value = err.message || 'Erreur lors du chargement des alertes';
-      } finally {
-        loading.value = false;
-      }
-    };
+const emit = defineEmits<{
+  alertsUpdated: [alerts: WeatherAlert[]];
+  error: [error: string];
+}>();
 
-    const acknowledgeAlert = async (alertId: string) => {
-      processingAlert.value = alertId;
-      try {
-        // await weatherIndexService.acknowledgeAlert(alertId);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        // Mettre à jour le statut localement
-        const alert = alerts.value.find(a => a.id === alertId);
-        if (alert) {
-          alert.status = 'acknowledged';
-        }
-      } catch (err: any) {
-        console.error('Erreur lors de l\'accusé de réception:', err);
-      } finally {
-        processingAlert.value = null;
-      }
-    };
+// Reactive data
+const alerts = ref<WeatherAlert[]>([]);
+const loading = ref(false);
+const error = ref<string | null>(null);
+let refreshTimer: number | null = null;
 
-    const resolveAlert = async (alertId: string) => {
-      processingAlert.value = alertId;
-      try {
-        // await weatherIndexService.resolveAlert(alertId);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        // Supprimer l'alerte de la liste
-        alerts.value = alerts.value.filter(a => a.id !== alertId);
-      } catch (err: any) {
-        console.error('Erreur lors de la résolution:', err);
-      } finally {
-        processingAlert.value = null;
-      }
-    };
+// Methods
+const refreshAlerts = async () => {
+  loading.value = true;
+  error.value = null;
+  
+  try {
+    const response = await weatherIndexService.getAlerts(props.status || 'active');
+    alerts.value = response.alerts;
+    emit('alertsUpdated', response.alerts);
+  } catch (err: any) {
+    error.value = err.response?.data?.message || 'Erreur lors du chargement des alertes';
+    emit('error', error.value);
+  } finally {
+    loading.value = false;
+  }
+};
 
-    const getAlertClass = (level: string) => {
-      switch (level) {
-        case 'low': return 'alert-success';
-        case 'medium': return 'alert-warning';
-        case 'high': return 'alert-danger';
-        case 'critical': return 'alert-dark';
-        default: return 'alert-secondary';
-      }
-    };
+const getAlertClass = (level: string) => {
+  switch (level) {
+    case 'low': return 'alert-low';
+    case 'medium': return 'alert-medium';
+    case 'high': return 'alert-high';
+    case 'critical': return 'alert-critical';
+    default: return 'alert-low';
+  }
+};
 
-    const getLevelBadgeClass = (level: string) => {
-      switch (level) {
-        case 'low': return 'bg-success';
-        case 'medium': return 'bg-warning';
-        case 'high': return 'bg-danger';
-        case 'critical': return 'bg-dark';
-        default: return 'bg-secondary';
-      }
-    };
+const getAlertIcon = (type: string) => {
+  const icons: { [key: string]: string } = {
+    'temperature': 'fas fa-thermometer-half',
+    'humidity': 'fas fa-tint',
+    'pressure': 'fas fa-compress-alt',
+    'precipitation': 'fas fa-cloud-rain',
+    'wind': 'fas fa-wind',
+    'visibility': 'fas fa-eye',
+    'storm': 'fas fa-bolt',
+    'flood': 'fas fa-water',
+    'heat': 'fas fa-fire',
+    'cold': 'fas fa-snowflake',
+    'default': 'fas fa-exclamation-triangle'
+  };
+  return icons[type.toLowerCase()] || icons.default;
+};
 
-    const getLevelLabel = (level: string) => {
-      switch (level) {
-        case 'low': return 'Normal';
-        case 'medium': return 'Attention';
-        case 'high': return 'Alerte';
-        case 'critical': return 'Critique';
-        default: return 'Inconnu';
-      }
-    };
+const getLevelText = (level: string) => {
+  switch (level) {
+    case 'low': return 'Faible';
+    case 'medium': return 'Modéré';
+    case 'high': return 'Élevé';
+    case 'critical': return 'Critique';
+    default: return 'Inconnu';
+  }
+};
 
-    const getMetricLabel = (metric: string) => {
-      const labels: { [key: string]: string } = {
-        temperature: 'Température',
-        humidity: 'Humidité',
-        pressure: 'Pression',
-        precipitation: 'Précipitations',
-        wind_speed: 'Vitesse du vent',
-        visibility: 'Visibilité',
-        cloud_cover: 'Couverture nuageuse'
-      };
-      return labels[metric] || metric;
-    };
+const getLevelClass = (level: string) => {
+  switch (level) {
+    case 'low': return 'text-success';
+    case 'medium': return 'text-warning';
+    case 'high': return 'text-danger';
+    case 'critical': return 'text-danger fw-bold';
+    default: return 'text-muted';
+  }
+};
 
-    const getMetricColor = (metric: string) => {
-      const colors: { [key: string]: string } = {
-        temperature: '#dc3545',
-        humidity: '#0d6efd',
-        pressure: '#6f42c1',
-        precipitation: '#198754',
-        wind_speed: '#fd7e14',
-        visibility: '#20c997',
-        cloud_cover: '#6c757d'
-      };
-      return colors[metric] || '#6c757d';
-    };
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'active': return 'Active';
+    case 'resolved': return 'Résolue';
+    case 'acknowledged': return 'Reconnue';
+    default: return status;
+  }
+};
 
-    const formatTimestamp = (timestamp: string) => {
-      return new Date(timestamp).toLocaleString('fr-FR');
-    };
+const getStatusClass = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-danger';
+    case 'resolved': return 'bg-success';
+    case 'acknowledged': return 'bg-warning';
+    default: return 'bg-secondary';
+  }
+};
 
-    onMounted(() => {
-      refreshAlerts();
-    });
+const formatTimestamp = (timestamp: string) => {
+  return new Date(timestamp).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
-    return {
-      alerts,
-      loading,
-      error,
-      processingAlert,
-      refreshAlerts,
-      acknowledgeAlert,
-      resolveAlert,
-      getAlertClass,
-      getLevelBadgeClass,
-      getLevelLabel,
-      getMetricLabel,
-      getMetricColor,
-      formatTimestamp
-    };
+// Lifecycle
+onMounted(() => {
+  refreshAlerts();
+  
+  if (props.autoRefresh && props.refreshInterval) {
+    refreshTimer = window.setInterval(refreshAlerts, props.refreshInterval);
+  }
+});
+
+// Cleanup
+import { onUnmounted } from 'vue';
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
   }
 });
 </script>
 
 <style scoped>
-.weather-index-alerts {
-  height: 100%;
-}
-
-.alerts-list {
-  max-height: 600px;
-  overflow-y: auto;
-}
-
-.alert-item {
-  border: 1px solid #dee2e6;
-  border-radius: 0.375rem;
-  padding: 1rem;
+.weather-alerts {
   margin-bottom: 1rem;
-  background-color: #f8f9fa;
 }
 
-.alert-item.alert-success {
-  border-color: #198754;
-  background-color: #d1e7dd;
+.card-header {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  border-bottom: none;
 }
 
-.alert-item.alert-warning {
-  border-color: #ffc107;
-  background-color: #fff3cd;
+.refresh-btn {
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
 }
 
-.alert-item.alert-danger {
-  border-color: #dc3545;
-  background-color: #f8d7da;
+.refresh-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
-.alert-item.alert-dark {
-  border-color: #212529;
-  background-color: #d3d3d4;
-}
-
-.alert-title {
-  font-size: 1.1rem;
-}
-
-.alert-message {
-  color: #495057;
-}
-
-.metric-summary {
-  background-color: rgba(255, 255, 255, 0.7);
-  padding: 0.5rem;
-  border-radius: 0.25rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.metric-name {
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.metric-value {
-  font-weight: bold;
-  color: #495057;
-}
-
-.metric-bar {
-  height: 4px;
-  background-color: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
-  margin: 0.5rem 0;
-  overflow: hidden;
-}
-
-.metric-progress {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.spinning {
+.refresh-btn.spinning i {
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.loading-state, .error-state, .no-alerts {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.no-alerts i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.alerts-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.alert-item {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: #f8f9fa;
+  transition: all 0.3s ease;
+}
+
+.alert-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.alert-low {
+  border-left: 4px solid #28a745;
+}
+
+.alert-medium {
+  border-left: 4px solid #ffc107;
+}
+
+.alert-high {
+  border-left: 4px solid #fd7e14;
+}
+
+.alert-critical {
+  border-left: 4px solid #dc3545;
+  background-color: #fff5f5;
+}
+
+.alert-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+}
+
+.alert-icon {
+  font-size: 1.5rem;
+  width: 40px;
+  text-align: center;
+}
+
+.alert-info {
+  flex: 1;
+}
+
+.alert-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.alert-level {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.alert-time {
+  font-size: 0.8rem;
+  color: #6c757d;
+  text-align: right;
+}
+
+.alert-message {
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.alert-details {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.index-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.index-info .label {
+  font-weight: 600;
+}
+
+.index-info .value {
+  font-weight: bold;
+}
+
+.alert-status {
+  text-align: right;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
 }
 </style> 
